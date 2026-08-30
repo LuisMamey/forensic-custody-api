@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/LuisMamey/forensic-custody-api/internal/models"
 )
@@ -23,6 +24,7 @@ func (s *Server) CreateCase(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	c.ID = id
+	c.CreatedAt = time.Now().UTC()
 
 	if err := s.repo.CreateCase(c); err != nil {
 		http.Error(w, err.Error(), http.StatusConflict)

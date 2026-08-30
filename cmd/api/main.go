@@ -19,6 +19,11 @@ func main() {
 	mux.HandleFunc("GET /health", healthHandler)
 	mux.HandleFunc("POST /cases", server.CreateCase)
 	mux.HandleFunc("GET /cases", server.ListCases)
+	mux.HandleFunc("POST /cases/{caseID}/evidence", server.CreateEvidence)
+	mux.HandleFunc("GET /cases/{caseID}/evidence", server.ListEvidenceByCase)
+	mux.HandleFunc("POST /evidence/{evidenceID}/custody-logs", server.AddCustodyLog)
+	mux.HandleFunc("GET /evidence/{evidenceID}/custody-logs", server.ListCustodyLogsByEvidence)
+
 
 	log.Println("listening on :8080")
 	log.Fatal(http.ListenAndServe(":8080", mux))

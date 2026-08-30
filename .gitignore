@@ -1,0 +1,17 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Delve debug binaries
+__debug_bin*
+
+# Test/coverage output
+*.test
+*.out
+
+# IDE
+.vscode/
+.idea/
