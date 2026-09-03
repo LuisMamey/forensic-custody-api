@@ -24,8 +24,10 @@ func main() {
 	mux.HandleFunc("POST /evidence/{evidenceID}/custody-logs", server.AddCustodyLog)
 	mux.HandleFunc("GET /evidence/{evidenceID}/custody-logs", server.ListCustodyLogsByEvidence)
 
-
 	log.Println("listening on :8080")
+
+	// TLS is intentionally not handled here — see docs/adr/0001-tls-termination.md.
+	// nosemgrep: go.lang.security.audit.net.use-tls.use-tls
 	log.Fatal(http.ListenAndServe(":8080", mux))
 }
 
