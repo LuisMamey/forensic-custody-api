@@ -25,6 +25,7 @@ resource "aws_s3_bucket_public_access_block" "evidence" {
   restrict_public_buckets = true
 }
 
+# Governance mode, not Compliance — see docs/adr/0003-object-lock-retention-mode.md
 resource "aws_s3_bucket_object_lock_configuration" "evidence" {
   bucket = aws_s3_bucket.evidence.id
 
@@ -63,6 +64,7 @@ resource "aws_s3_bucket_versioning" "evidence_logs" {
   }
 }
 
+# Governance mode, not Compliance — see docs/adr/0003-object-lock-retention-mode.md
 resource "aws_s3_bucket_object_lock_configuration" "evidence_logs" {
   bucket = aws_s3_bucket.evidence_logs.id
 
