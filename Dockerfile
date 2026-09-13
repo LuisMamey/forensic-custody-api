@@ -1,5 +1,5 @@
 # Stage 1: build a statically linked binary using the full Go toolchain.
-FROM golang:1.26-alpine AS builder
+FROM golang:1.27-alpine AS builder
 
 WORKDIR /app
 
