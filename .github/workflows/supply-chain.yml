@@ -1,0 +1,63 @@
+name: Supply Chain
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+jobs:
+  build-sign-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set lowercase image name
+        run: echo "IMAGE=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
+
+      - name: Log in to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Build image
+        run: docker build -t ${{ env.IMAGE }}:${{ github.sha }} .
+
+      - name: Install Syft
+        run: |
+          curl -sSL -o syft.tar.gz https://github.com/anchore/syft/releases/download/v1.51.0/syft_1.51.0_linux_amd64.tar.gz
+          tar zxvf syft.tar.gz syft
+          sudo mv syft /usr/local/bin/
+
+      - name: Generate SBOM
+        run: syft ${{ env.IMAGE }}:${{ github.sha }} -o cyclonedx-json=sbom.json
+
+      - name: Install Grype
+        run: |
+          curl -sSL -o grype.tar.gz https://github.com/anchore/grype/releases/download/v0.118.0/grype_0.118.0_linux_amd64.tar.gz
+          tar zxvf grype.tar.gz grype
+          sudo mv grype /usr/local/bin/
+
+      - name: Scan SBOM with Grype
+        run: grype sbom:./sbom.json --fail-on medium
+
+      - name: Push image
+        run: docker push ${{ env.IMAGE }}:${{ github.sha }}
+
+      - name: Get image digest
+        run: |
+          DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' ${{ env.IMAGE }}:${{ github.sha }})
+          echo "DIGEST=$DIGEST" >> "$GITHUB_ENV"
+
+      - name: Install Cosign
+        run: |
+          curl -sSL -o cosign https://github.com/sigstore/cosign/releases/download/v2.6.5/cosign-linux-amd64
+          chmod +x cosign
+          sudo mv cosign /usr/local/bin/
+
+      - name: Sign image (keyless)
+        run: cosign sign --yes ${{ env.DIGEST }}
+
+      - name: Attest SBOM
+        run: cosign attest --yes --predicate sbom.json --type cyclonedx ${{ env.DIGEST }}
