@@ -6,6 +6,10 @@ resource "aws_s3_bucket" "evidence" {
   bucket = "forensic-custody-evidence-${data.aws_caller_identity.current.account_id}"
 
   object_lock_enabled = true
+
+  tags = {
+    Project = "forensic-custody-api"
+  }
 }
 
 resource "aws_s3_bucket_versioning" "evidence" {
@@ -45,6 +49,10 @@ resource "aws_s3_bucket" "evidence_logs" {
   bucket = "forensic-custody-evidence-logs-${data.aws_caller_identity.current.account_id}"
 
   object_lock_enabled = true
+
+  tags = {
+    Project = "forensic-custody-api"
+  }
 }
 
 resource "aws_s3_bucket_public_access_block" "evidence_logs" {
