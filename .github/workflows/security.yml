@@ -78,4 +78,19 @@ jobs:
 
       - name: Run Checkov
         run: checkov -d terraform/
+
+  conftest:
+    name: Policy as Code (Conftest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Conftest
+        run: |
+          curl -sSL -o conftest.tar.gz https://github.com/open-policy-agent/conftest/releases/download/v0.70.1/conftest_0.70.1_Linux_x86_64.tar.gz
+          tar zxvf conftest.tar.gz conftest
+          sudo mv conftest /usr/local/bin/
+
+      - name: Run Conftest policies
+        run: conftest test --parser hcl2 --policy terraform/policy terraform/*.tf
         
