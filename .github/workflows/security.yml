@@ -93,4 +93,26 @@ jobs:
 
       - name: Run Conftest policies
         run: conftest test --parser hcl2 --policy terraform/policy terraform/*.tf
+
+  dast:
+    name: DAST (OWASP ZAP)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t forensic-custody-api:ci .
+
+      - name: Run API container
+        run: docker run -d -p 8080:8080 --name forensic-api forensic-custody-api:ci
+
+      - name: Wait for API to be ready
+        run: |
+          for i in $(seq 1 10); do
+            curl -sf http://localhost:8080/health && break
+            sleep 2
+          done
+
+      - name: Run ZAP baseline scan
+        run: docker run -t --network host -v ${{ github.workspace }}/.zap:/zap/wrk/:rw zaproxy/zap-stable@sha256:781a2bdaea47324e7bab583e2263f21d257b0aee61ed51521a5be45f5f5081ef zap-baseline.py -t http://localhost:8080/health -c /zap/wrk/rules.tsv
         

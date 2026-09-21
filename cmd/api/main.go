@@ -28,11 +28,21 @@ func main() {
 
 	// TLS is intentionally not handled here — see docs/adr/0001-tls-termination.md.
 	// nosemgrep: go.lang.security.audit.net.use-tls.use-tls
-	log.Fatal(http.ListenAndServe(":8080", mux))
+	log.Fatal(http.ListenAndServe(":8080", securityHeaders(mux)))
 }
 
 // healthHandler reports that the service is up and reachable.
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
+}
+
+// securityHeaders adds baseline HTTP security headers to every response.
+func securityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set("Cross-Origin-Resource-Policy", "same-origin")
+		next.ServeHTTP(w, r)
+	})
 }

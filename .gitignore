@@ -33,3 +33,6 @@ terraform.rc
 
 # SBOM artifacts (generated at build time, not source)
 sbom*.json
+
+# ZAP-generated automation plan (regenerated on every scan run)
+.zap/zap.yaml
