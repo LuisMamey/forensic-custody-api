@@ -6,6 +6,8 @@ Continuation of [PHASE1_HISTORY.md](PHASE1_HISTORY.md), covering the three Phase
 
 ## Sprint 1 — Supply Chain Security
 
+**A workflow ordering bug caught before it ever ran, not after:** the first draft of `.github/workflows/supply-chain.yml` pushed the image to GHCR *before* running the Syft/Grype gate — meaning a vulnerable image would already be public by the time anything checked it. Caught on review, not in a failed run: Syft can read a locally-built image directly, without it being published first, so there was never a reason to publish before scanning. Fixed by reordering: build → SBOM → scan (gate) → push → sign.
+
 ### Exhibit 10 — Syft
 
 **Role:** generates a Software Bill of Materials (SBOM) from the built Docker image.

@@ -71,6 +71,25 @@ Security and architecture decisions with real trade-offs are written up as ADRs 
 
 Obvious remediations (a dependency bump for a known CVE, for example) live in their commit messages instead — not every fix needs an ADR.
 
+## Known limitations / out of scope
+
+This is a learning project scoped around the DevSecOps pipeline, not a production-ready service. What's deliberately not here:
+
+**Application-level:**
+- No validation that `status` or `evidence_type` match the enum values defined in `internal/models` — an invalid string is accepted as-is.
+- `ListEvidenceByCase` and `ListCustodyLogsByEvidence` return an empty list when the parent (case/evidence) doesn't exist, instead of `404` — inconsistent with the create endpoints, which do return `404` for a missing parent.
+- No authentication or authorization — anyone who can reach the API can create cases, add evidence, or append custody log entries. Ironic for a chain-of-custody system, and the most significant gap if this were ever real.
+- No persistent storage — data lives in an in-memory map and is lost on every restart.
+- No automated tests (no `_test.go` files anywhere in the repo).
+- No structured logging, request correlation IDs, or graceful shutdown handling.
+- No OpenAPI/Swagger spec — this also limits how thoroughly the DAST job (ZAP) can exercise the API, since its spider can't discover JSON endpoints on its own.
+- No rate limiting or explicit CORS policy.
+
+**Infrastructure / CI:**
+- No compute or load balancer is deployed — Terraform provisions only S3 (evidence storage, IAM-scoped access) and IAM. See [ADR 0001](docs/adr/0001-tls-termination.md) for why TLS depends on a load balancer that doesn't exist yet.
+- No GitHub branch protection rules — the security gate reports pass/fail but nothing currently blocks a merge on failure.
+- No Dependabot/Renovate — a deliberate choice, not an oversight, to avoid the automated-dependency-PR complexity that previously caused friction in another project.
+
 ## How this was built
 
 The full narrative — what each tool is, who built it, why it was chosen here, and the real bugs and gotchas hit along the way — is written up in two case files:
