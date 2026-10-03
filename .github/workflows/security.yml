@@ -113,6 +113,6 @@ jobs:
             sleep 2
           done
 
-      - name: Run ZAP baseline scan
-        run: docker run -t --network host -v ${{ github.workspace }}/.zap:/zap/wrk/:rw zaproxy/zap-stable@sha256:781a2bdaea47324e7bab583e2263f21d257b0aee61ed51521a5be45f5f5081ef zap-baseline.py -t http://localhost:8080/health -c /zap/wrk/rules.tsv
+      - name: Run ZAP API scan
+        run: docker run -t --network host -v ${{ github.workspace }}:/zap/wrk/:rw zaproxy/zap-stable@sha256:781a2bdaea47324e7bab583e2263f21d257b0aee61ed51521a5be45f5f5081ef zap-api-scan.py -t /zap/wrk/docs/openapi.yaml -f openapi -c /zap/wrk/.zap/rules.tsv
         
