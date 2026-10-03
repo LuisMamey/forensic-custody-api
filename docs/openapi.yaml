@@ -1,0 +1,178 @@
+openapi: 3.0.3
+info:
+  title: Forensic Custody API
+  description: REST API for tracking chain of custody of digital forensic evidence.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+    description: Local server
+
+paths:
+  /health:
+    get:
+      summary: Liveness check
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  /cases:
+    get:
+      summary: List all cases
+      responses:
+        '200':
+          description: List of cases
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Case'
+    post:
+      summary: Create a new case
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - case_number
+                - lead_investigator
+              properties:
+                case_number:
+                  type: string
+                  example: "CASE-2026-001"
+                lead_investigator:
+                  type: string
+                  example: "Jane Doe"
+      responses:
+        '201':
+          description: Case created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Case'
+
+  /cases/{caseID}/evidence:
+    get:
+      summary: List evidence for a case
+      parameters:
+        - name: caseID
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of evidence items
+    post:
+      summary: Add evidence to a case
+      parameters:
+        - name: caseID
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - evidence_type
+                - description
+                - sha256_hash
+                - storage_location
+              properties:
+                evidence_type:
+                  type: string
+                  example: "disk_image"
+                description:
+                  type: string
+                  example: "Primary workstation image"
+                sha256_hash:
+                  type: string
+                  example: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                storage_location:
+                  type: string
+                  example: "s3://forensic-evidence-bucket/case-1/evidence-1.raw"
+      responses:
+        '201':
+          description: Evidence added
+        '404':
+          description: Case not found
+
+  /evidence/{evidenceID}/custody-logs:
+    get:
+      summary: List custody logs for an evidence item
+      parameters:
+        - name: evidenceID
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Custody history
+    post:
+      summary: Append a custody log entry
+      parameters:
+        - name: evidenceID
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - transferred_from
+                - transferred_to
+                - action_taken
+                - integrity_verified
+              properties:
+                transferred_from:
+                  type: string
+                  example: "Officer Alice"
+                transferred_to:
+                  type: string
+                  example: "Analyst Bob"
+                action_taken:
+                  type: string
+                  example: "Transferred to secure lab storage"
+                integrity_verified:
+                  type: boolean
+                  example: true
+      responses:
+        '201':
+          description: Custody log appended
+        '404':
+          description: Evidence not found
+
+components:
+  schemas:
+    Case:
+      type: object
+      properties:
+        id:
+          type: string
+        case_number:
+          type: string
+        lead_investigator:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          
