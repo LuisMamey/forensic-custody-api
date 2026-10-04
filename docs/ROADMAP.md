@@ -1,93 +1,105 @@
-# Engineering Roadmap & Architecture Evolution: Forensic Custody API
+# Forensic Custody API — Architecture Roadmap & Evolution
 
 ## 1. Executive Summary & Architecture Vision
-This document serves as the immutable baseline record for the technical evolution of `forensic-custody-api`. The project is structured across three progressive milestones, evolving from a raw microservice into an enterprise-grade, cloud-native, observable, and hardened production workload.
+This document defines the technical evolution of `forensic-custody-api`. The objective is to build an enterprise-grade digital forensic evidence microservice coupled with a production-ready, cloud-native DevSecOps and SRE platform on AWS.
 
 ```mermaid
 flowchart LR
-    S1["Sprint 1: DevSecOps Base & Supply Chain"] --> S2["Sprint 2: CNAPP (Cloud-Native Security)"]
-    S2 --> S3["Sprint 3: SRE & Production Operations"]
+    S1["Sprint 1: DevSecOps Base & CI/CD Supply Chain<br/>(Completed)"] --> S2["Sprint 2: Domain Engineering & Forensic Data Integrity<br/>(In Progress)"]
+    S2 --> S3["Sprint 3: Cloud-Native Platform, Runtime Security & SRE<br/>(Planned)"]
 ```
 
 ---
 
-## 2. Industry Standards & Assurance Target
+## 2. Industry Standards, Assurance Targets & Verification
 
-| Standard / Framework | Organization | Target Level | Architectural Justification |
-|---|---|---|---|
-| **SLSA** (Supply-chain Levels for Software Artifacts) | OpenSSF / Google | **Build Level 3** | Isolated CI runner, CycloneDX SBOM generation, keyless OIDC signing and provenance attestation via Cosign and Rekor transparency log. |
-| **OWASP ASVS** (Application Security Verification Standard) | OWASP | **Level 2 (Standard / Defense-in-Depth)** | Threat modeling (STRIDE), WORM immutable storage, DAST schema fuzzing, and edge TLS termination. Excludes military-grade Level 3 formal proofs. |
-| **CIS Benchmarks** | Center for Internet Security | **Profile Level 1** | Distroless non-root container, SSE-S3 encryption, and least-privilege IAM policies without the operational overhead of multi-region replication. |
-| **OWASP SAMM** (Software Assurance Maturity Model) | OWASP | **Level 2 (Structured & Automated)** | Shift-left automation across local pre-commit hooks, deterministic CI gates, and continuous posture auditing. |
+| Standard / Framework | Version / Organization | Target Level | Verification Mechanism | Architectural Scope |
+|---|---|---|---|---|
+| **SLSA** | v1.0 (OpenSSF / Google) | **Build Level 2** *(Targeting L3 upon provenance builder)* | `gh attestation verify` / `slsa-verifier` | Hosted CI runner, isolated build pipeline, signed CycloneDX SBOM, and immutable commit tags. |
+| **OWASP ASVS** | v4.0.3 (Level 2) | **Level 2 (Standard Enterprise)** | Automated DAST + SAST + Code Review | Defense-in-depth, strict cryptographic verification, role-based access control, and audit logs. |
+| **CIS AWS Foundations** | v3.0 (CIS) | **Profile Level 1** | Prowler Automated Scans (`.github/workflows/cspm.yml`) | Non-root containers, S3 Object Lock compliance mode, KMS CMK encryption, least privilege IAM. |
+| **OpenSSF Scorecard** | OpenSSF | **Score $\ge$ 8.0** | Scorecard GitHub Action + Badge | Automated checks on branch protection, signed commits, pinned dependencies, and vulnerability scanning. |
 
 ---
 
-## 3. Master Backlog: Concept vs. Tool Mapping
+## 3. Master Engineering Backlog
 
-### SPRINT 1: DevSecOps Base & Supply Chain Security
+### SPRINT 1: DevSecOps Base & CI/CD Supply Chain Security
 *Status: Completed*
 
-* **Minimal Runtime & Static Compilation** | `Go 1.27` — Pure standard library (`net/http`), zero external runtime dependencies.
-* **Minimal Distroless Packaging** | `Docker Multi-stage + Distroless Debian 12` — Rootless runtime (`UID 65532`), ~5.6MB attack surface without `/bin/sh`.
-* **Remote Secret Scanning** | `Gitleaks CLI` — History and commit scanning in `.github/workflows/security.yml`.
-* **SAST (Static Application Security Testing)** | `Semgrep` — Automated static rules for Go vulnerabilities.
-* **SCA (Symbol Reachability Analysis)** | `Govulncheck` — Call-graph reachability analysis on compiled Go symbols.
-* **Container Security Scanning** | `Trivy` — Image vulnerability scanning in CI.
-* **IaC Security** | `Checkov` — Static misconfiguration auditing across Terraform files.
-* **Policy as Code** | `Conftest (OPA Rego)` — Custom policy validation for IAM naming, S3 Object Lock, and mandatory tags.
-* **SBOM Generation** | `Syft` — CycloneDX JSON artifact generation (`sbom.json`).
-* **SBOM Vulnerability Scanning** | `Grype` — Pre-publish quality gate in `.github/workflows/supply-chain.yml`.
-* **Cryptographic Signing & Attestation** | `Cosign (Sigstore / Rekor)` — Ephemeral keyless signing with GitHub Actions OIDC identity.
-* **WORM Infrastructure & Least Privilege** | `Terraform (AWS S3 + IAM)` — Evidence bucket with Object Lock and strictly scoped IAM policies.
+| Concept | Tool / Technology | Implementation / Evidence |
+|---|---|---|
+| **Minimal Runtime & Static Compilation** | Go 1.27 (`net/http`) | Pure Go standard library, zero external runtime dependencies (`cmd/api/main.go`). |
+| **Distroless Rootless Packaging** | Docker Multi-stage + Distroless Debian 12 | Rootless runtime (`UID 65532`), ~5.6MB attack surface without `/bin/sh` (`Dockerfile`). |
+| **Pre-Commit Secret Prevention** | `pre-commit` + `Gitleaks` | Local git hooks preventing secret leakage prior to commit (`.pre-commit-config.yaml`). |
+| **Remote Secret Scanning** | `Gitleaks CLI` | Full repository git history scan in CI (`.github/workflows/security.yml:secrets`). |
+| **Static Application Security (SAST)** | `Semgrep` | Automated security rule enforcement (`.github/workflows/security.yml:sast`). |
+| **Software Composition Analysis (SCA)** | `Govulncheck` | Static call-graph symbol reachability analysis (`.github/workflows/security.yml:govulncheck`). |
+| **Container Image Scanning** | `Trivy` (`--ignore-unfixed`) | Deterministic vulnerability gate in CI (`.github/workflows/security.yml:trivy-image`). |
+| **IaC Static Analysis** | `Checkov` | Static misconfiguration scanning across Terraform files (`.github/workflows/security.yml:checkov`). |
+| **Policy as Code** | `Conftest (OPA Rego)` | Custom Rego rules enforcing IAM naming, tags, and S3 lock (`.github/workflows/security.yml:conftest`). |
+| **SBOM Generation & Auditing** | `Syft` + `jq` | CycloneDX SBOM generation and granular OS vs Go library auditing (`.github/workflows/supply-chain.yml`). |
+| **SBOM Vulnerability Quality Gate** | `Grype` (`--only-fixed`) | Deterministic vulnerability gate based on fixable CVSS $\ge$ 7 (`.github/workflows/supply-chain.yml`). |
+| **Cryptographic Image Signing** | `Cosign` (Sigstore / Rekor) | Keyless OIDC signing published to Rekor transparency log (`.github/workflows/supply-chain.yml`). |
+| **Automated Dependency Updates** | `Dependabot` | Weekly automated dependency scanning for Go modules and GitHub Actions (`.github/dependabot.yml`). |
+| **Dynamic API Security Testing (DAST)** | `OWASP ZAP API Scan` + OpenAPI 3.0 | Schema-driven active fuzzing against all operations (`docs/openapi.yaml`, `.github/workflows/security.yml:dast`). |
+| **Continuous Security Posture (CSPM)** | `Prowler` | Automated live AWS auditing against IAM and S3 (`.github/workflows/cspm.yml`). |
 
 ---
 
-### SPRINT 2: CNAPP (Cloud-Native Application Protection Platform)
+### SPRINT 2: Domain Engineering & Forensic Data Integrity
 *Status: In Progress*
 
-#### Phase 1: Local Hardening & Deterministic CI/CD (Completed)
-1. **Shift-Left Local Secret Prevention** | `pre-commit` + `Gitleaks` — `.pre-commit-config.yaml` client-side commit interception.
-2. **Automated Dependency Updates** | `Dependabot` — `.github/dependabot.yml` weekly tracking of Go modules and GitHub Actions with SemVer analysis.
-3. **Schema-Driven API DAST** | `OWASP ZAP API Scan` + `OpenAPI 3.0` — `docs/openapi.yaml` driving active payload fuzzing against all 8 operations.
-4. **Deterministic Security Gates** | `Trivy (--ignore-unfixed)` & `Grype (--only-fixed)` — Breaking builds strictly on actionable CVSS $\ge$ 7 vulnerabilities with available patches.
-5. **Granular SBOM Component Auditing** | `jq` Parser in CI — Clear separation of OS-level packages (`pkg:deb`) vs Application libraries (`pkg:golang`).
+#### Phase 1: Threat Modeling & Infrastructure Baseline (First Step)
+1. **Threat Modeling (Security by Design)** | `STRIDE Framework` — Formal analysis of forensic data spoofing, tampering, repudiation, info disclosure, DoS, and elevation of privilege (`docs/STRIDE_THREAT_MODEL.md`).
+2. **IaC Remote State Locking** | `Terraform S3 Backend + DynamoDB Lock` — Prevent concurrent pipeline state corruption and ensure encrypted state storage (`terraform/backend.tf`).
+3. **AWS Workload Identity Federation (CIEM / Zero-Trust)** | `AWS IAM OIDC + GitHub Actions` — Elimination of static long-lived IAM keys; ephemeral STS tokens scoped to repository branch.
+4. **Vulnerability Prioritization & Ingestion (ASPM)** | `OWASP DefectDojo + EPSS/CISA KEV Prioritization` — Centralized triage combining CVSS, Exploit Prediction Scoring System (EPSS), and active exploited vulnerabilities (`docs/ASPM_DEFECTDOJO_ARCHITECTURE.md`).
 
-#### Phase 2: Threat Modeling & Security Posture (Completed)
-1. **Threat Modeling (Security by Design)** | `STRIDE Framework` — `docs/STRIDE_THREAT_MODEL.md` analysis across all 6 threat categories.
-2. **Live Cloud Auditing vs IaC (Drift Detection)** | `Checkov` vs `Prowler` — `docs/IAC_vs_CSPM.md` and live scheduled scanning via `.github/workflows/cspm.yml`.
-3. **Centralized Vulnerability Management (ASPM)** | `OWASP DefectDojo` — `docs/ASPM_DEFECTDOJO_ARCHITECTURE.md` unified API ingestion, deduplication, and SLA tracking.
+#### Phase 2: Forensic Domain Integrity & Cryptography (The Core Product)
+1. **Evidence Cryptographic Hashing** | `SHA-256 / SHA-512 Streams` — Dual-hash stream computation upon ingest to guarantee bit-level forensic immutability without loading entire files into memory.
+2. **Immutable Audit Ledger (Chained Hashing / Merkle Tree)** | `Cryptographic Audit Chain` — Each custody transition (`SEIZED -> IN_TRANSIT -> LAB_ANALYSIS -> VAULT_STORED`) records the hash of the preceding block to prevent record rewriting.
+3. **Trusted Time Verification** | `RFC 3161 Timestamping Protocol (TSP)` — Cryptographic proof of existence at a specific time via public or simulated Time Stamping Authority (TSA).
+4. **Envelope Encryption & Key Management** | `AWS KMS Customer Managed Keys (CMK)` — Dedicated KMS key with automatic rotation, enforcing least-privilege key policies for evidence payload encryption.
+5. **Authentication, Authorization & Forensic RBAC** | `JWT / Mutual TLS (mTLS) + Role Claims` — Strict role boundaries (`INVESTIGATOR`, `LAB_ANALYST`, `EVIDENCE_CUSTODIAN`, `AUDITOR`) with tamper-evident audit logs.
 
-#### Phase 3: Workload Protection, K8s & Zero-Trust (CWPP / CIEM) (In Progress)
-1. **Dynamic Secrets & Ephemeral Leases (CIEM)** | `HashiCorp Vault / AWS Secrets Manager` — Just-in-time credentials with short TTLs.
-2. **Kubernetes Admission Controllers** | `Kyverno vs OPA Gatekeeper` — Pre-deployment manifest validation (enforcing non-root, distroless, and resource quotas).
-3. **Kernel-Level Runtime Security (CWPP)** | `Falco / eBPF` — Kernel syscall interception detecting interactive shells and anomalous executions.
-4. **Hardening & Immutable Base Images** | `Packer + CIS Benchmarks / OpenSCAP` — Golden images audited against CIS standards.
+#### Phase 3: Domain Quality Assurance & Supply Chain Hardening
+1. **Native Go Fuzzing & Resilience Tests** | `go test -fuzz` + Table-Driven Unit Tests — Fuzzing payload parsers and metadata decoders to prevent panic conditions and buffer overflow scenarios.
+2. **CI/CD Supply Chain Hardening (SLSA L3 Readiness)** | `SHA Pinning & Runner Permissions` — Pin all GitHub Actions to full 40-character commit SHAs and enforce top-level `permissions: contents: read` across all workflows.
+3. **OpenSSF Scorecard Integration** | `OpenSSF Scorecard Action` — Automated repository posture evaluation and status badge tracking.
 
 ---
 
-### SPRINT 3: SRE (Site Reliability Engineering) & Production Operations
+### SPRINT 3: Cloud-Native Platform, Runtime Security & SRE
 *Status: Planned*
 
-#### Phase 1: Observability, Metrics & SLI/SLO
-1. **Service Metrics, SLI/SLO & Error Budgets** | `Prometheus` — Instrumentation of `http_requests_total`, latency percentiles, and burn rate alerting.
-2. **Distributed Tracing & Structured Logs** | `OpenTelemetry (OTel)` — End-to-end trace correlation linking JSON logs via `trace_id`.
-3. **Alert Hygiene & Anomaly Detection** | `Prometheus Alertmanager` — Multi-window alerting preventing on-call fatigue.
-4. **Observability as Code** | `Datadog Terraform Provider` — Declarative 5xx monitors, SLOs, and dashboards in `terraform/datadog/`.
-5. **Native Cloud Telemetry** | `AWS CloudWatch Metrics` — TargetResponseTime and HTTP 5xx tracking on Application Load Balancers.
+#### Phase 1: Network & Orchestration Platform (AWS Cloud Infrastructure)
+1. **Network Segmentation & VPC Architecture** | `Terraform AWS VPC Module` — Isolated subnets: public subnets for ingress ALB, private subnets for EKS worker nodes, and isolated subnets for persistence.
+2. **Kubernetes Cluster with Hardened Operating System** | `AWS EKS + Bottlerocket OS` — Purpose-built, read-only root filesystem container OS with SELinux in enforcing mode (eliminating need for manual Packer Golden Images).
+3. **Application Ingress & Edge Protection** | `AWS ALB + AWS WAF` — Application Load Balancer with TLS 1.3 edge termination (ADR 0001) and AWS WAF rate limiting / OWASP Top 10 rule group protection.
+4. **Zero-Trust Secrets Synchronization** | `External Secrets Operator (ESO) + AWS Secrets Manager` — Synchronize dynamic secrets into ephemeral Kubernetes native Secrets using EKS Pod Identity / IRSA.
 
-#### Phase 2: Software Resilience & Availability Patterns
-1. **Traffic Throttling & Abuse Prevention** | `Rate Limiting Middleware (Go)` — Token-bucket rate limiting preventing memory exhaustion.
-2. **Cascading Failure Prevention** | `Circuit Breaker & Exponential Backoff` — Graceful degradation during downstream outages.
+#### Phase 2: Runtime Security & Admission Governance
+1. **Cryptographic Admission Control** | `Kyverno` — Reject pods running as root, enforce read-only root filesystems, and **verify Cosign signatures against the Rekor transparency log** before pod admission.
+2. **Kernel Syscall Anomaly Detection (CWPP)** | `Falco (eBPF Driver)` — Real-time detection of container escape attempts, unexpected network connections, or unauthorized binary executions in the kernel space.
+3. **HTTP Server Resilience & Graceful Shutdown** | `Go net/http Timeouts & Signal Handling` — Strict `ReadHeaderTimeout`, `ReadTimeout`, `WriteTimeout` (Slowloris mitigation) and graceful drain via `signal.NotifyContext` and `server.Shutdown`.
 
-#### Phase 3: Infrastructure, Networking & Advanced Kubernetes
-1. **Secure Remote State & Locking** | `S3 Backend + DynamoDB Lock` — `terraform/backend.tf` state concurrency protection in CI/CD.
-2. **Base Network Architecture & Tiered Subnets** | `Terraform AWS VPC Module` — `terraform/vpc.tf` public subnets for ALB and private subnets for workloads/DBs.
-3. **Kubernetes Workload Orchestration** | `Kubernetes Manifests` — `Deployment`, `Service`, `Ingress`, and health probes (`livenessProbe`/`readinessProbe`).
-4. **Traffic Balancing & Reverse Proxies** | `AWS Application Load Balancer (ALB)` — Edge TLS 1.3 termination (ADR 0001) and HTTP status code troubleshooting (502 vs 504).
-5. **Transparent mTLS & Workload Identity** | `Service Mesh (Linkerd / Istio)` — East-west mutual TLS with SPIFFE/SPIRE workload identities.
-6. **Low-Level Linux Troubleshooting** | `Linux Diagnostic Kit` — Operational runbook for `htop`, `ss`, `journalctl`, `tcpdump`, `strace`, and `curl -v`.
+#### Phase 3: Observability, Metrics & SRE Operations
+1. **Unified Observability Platform** | `Prometheus + OpenTelemetry (OTel)` — Native OTel instrumentation in Go exporting metrics and traces to Prometheus / Jaeger (Open source standard).
+2. **Service Level Objectives (SLO) & Error Budgets** | Measurable targets:
+   - **Availability SLI/SLO:** 99.9% of HTTP requests return non-5xx status over 30 days.
+   - **Latency SLI/SLO:** 99th percentile (p99) response time < 250ms for evidence metadata read operations.
+3. **Load & Stress Testing** | `k6` — Automated performance and threshold testing validating SLOs under concurrency.
+4. **Alert Hygiene & Incident Postmortems** | `Alertmanager + Blameless RCA Framework` — Multi-window burn-rate alerts and codified incident review templates (`docs/postmortems/`).
+5. **GitOps Progressive Delivery** | `ArgoCD` — Pull-based GitOps deployment keeping cluster state synchronized with git.
 
-#### Phase 4: Release Engineering, SRE Culture & AIOps
-1. **Secure GitOps & Progressive Delivery** | `ArgoCD + Argo Rollouts` — Pull-based deployment model; automated Canary and Rolling updates.
-2. **Incident Management & Blameless Postmortems** | `Blameless Incident Protocol` — Root Cause Analysis (RCA) framework and incident templates in `docs/postmortems/`.
-3. **AI Workload Security & Operations (AIOps)** | `OWASP Top 10 for LLMs` — Guardrails against prompt injection, credential leakage in prompts, and blast radius containment.
+---
+
+## 4. Architectural Decision Records (ADR) Index
+
+| ADR ID | Title | Status | Date | Decision Summary |
+|---|---|---|---|---|
+| [ADR 0001](file:///home/lrios/Documentos/archivos%20antigua%20laptop/PersonaL/forensic-custody-api/docs/adr/0001-tls-termination-architecture.md) | Edge TLS Termination on Reverse Proxy | Accepted | 2026-04-03 | TLS terminated at ALB/Ingress; microservice runs unencrypted HTTP inside private VPC network. |
+| **ADR 0002** | Evidence Immutability & Chained Ledger | Proposed | Pending | Use SHA-256 chained block hashes instead of complex distributed ledger for evidence custody state. |
+| **ADR 0003** | EKS Node OS: Bottlerocket vs Custom Packer AMIs | Proposed | Pending | Adopt AWS Bottlerocket OS for immutable, audited, read-only root node architecture. |
+| **ADR 0004** | Secret Management: ESO with AWS Secrets Manager | Proposed | Pending | Adopt External Secrets Operator (ESO) with EKS Pod Identity over heavy HashiCorp Vault cluster. |
