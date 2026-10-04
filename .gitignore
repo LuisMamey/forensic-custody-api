@@ -36,3 +36,6 @@ sbom*.json
 
 # ZAP-generated automation plan (regenerated on every scan run)
 .zap/zap.yaml
+
+# Prowler CSPM scan outputs
+output/

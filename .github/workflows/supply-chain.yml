@@ -61,3 +61,11 @@ jobs:
 
       - name: Attest SBOM
         run: cosign attest --yes --predicate sbom.json --type cyclonedx ${{ env.DIGEST }}
+
+      - name: Audit SBOM Component Separation (OS vs App)
+        run: |
+          echo "=== Operating System Base Packages (Debian Distroless) ==="
+          jq -r '.components[] | select(.type=="library" and (.purl | startswith("pkg:deb"))) | .name + " (" + .version + ")"' sbom.json
+          
+          echo "=== Application Dependencies (Go Runtime & Modules) ==="
+          jq -r '.components[] | select(.type=="library" and (.purl | startswith("pkg:golang"))) | .name + " (" + .version + ")"' sbom.json
