@@ -9,7 +9,7 @@ jobs:
     name: Secret Scanning (Gitleaks)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -29,7 +29,7 @@ jobs:
     container:
       image: semgrep/semgrep:1.175.0
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Run Semgrep
         run: semgrep scan --config=p/security-audit --error
@@ -38,7 +38,7 @@ jobs:
     name: SCA (Govulncheck)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-go@v5
         with:
@@ -54,7 +54,7 @@ jobs:
     name: Container Security (Trivy)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Build image
         run: docker build -t forensic-custody-api:ci .
@@ -74,7 +74,7 @@ jobs:
     container:
       image: bridgecrew/checkov:3.3.16
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Run Checkov
         run: checkov -d terraform/
@@ -83,7 +83,7 @@ jobs:
     name: Policy as Code (Conftest)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install Conftest
         run: |
@@ -98,7 +98,7 @@ jobs:
     name: DAST (OWASP ZAP)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Build image
         run: docker build -t forensic-custody-api:ci .
