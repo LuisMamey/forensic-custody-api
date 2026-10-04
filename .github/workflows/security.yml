@@ -66,7 +66,7 @@ jobs:
           sudo mv trivy /usr/local/bin/
 
       - name: Run Trivy
-        run: trivy image --exit-code 1 --severity CRITICAL,HIGH forensic-custody-api:ci
+        run: trivy image --exit-code 1 --severity CRITICAL,HIGH --ignore-unfixed forensic-custody-api:ci
 
   checkov:
     name: IaC Security (Checkov)

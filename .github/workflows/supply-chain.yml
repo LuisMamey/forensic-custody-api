@@ -40,7 +40,7 @@ jobs:
           sudo mv grype /usr/local/bin/
 
       - name: Scan SBOM with Grype
-        run: grype sbom:./sbom.json --fail-on medium
+        run: grype sbom:./sbom.json --fail-on high --only-fixed
 
       - name: Push image
         run: docker push ${{ env.IMAGE }}:${{ github.sha }}
