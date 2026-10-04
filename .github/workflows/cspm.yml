@@ -10,7 +10,7 @@ jobs:
     name: AWS Posture & Drift Audit (Prowler)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
       - name: Run Prowler against AWS
         env:
@@ -18,8 +18,10 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: "us-east-1"
         run: |
-          mkdir -p output && chmod 777 output
-          docker run --rm --user 0 \
+          mkdir -p output
+          sudo chown -R 1000:1000 output
+          sudo chmod -R 777 output
+          docker run --rm \
             -e AWS_ACCESS_KEY_ID \
             -e AWS_SECRET_ACCESS_KEY \
             -e AWS_DEFAULT_REGION \
@@ -28,7 +30,8 @@ jobs:
 
       - name: Archive Prowler Security Report
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: prowler-cspm-report
           path: output/
+          
