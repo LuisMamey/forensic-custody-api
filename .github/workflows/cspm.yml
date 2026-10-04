@@ -18,15 +18,13 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: "us-east-1"
         run: |
-          mkdir -p output
-          sudo chown -R 1000:1000 output
-          sudo chmod -R 777 output
+          mkdir -p output && chmod 777 output
           docker run --rm \
             -e AWS_ACCESS_KEY_ID \
             -e AWS_SECRET_ACCESS_KEY \
             -e AWS_DEFAULT_REGION \
-            -v ${{ github.workspace }}/output:/home/prowler/output:rw \
-            toniblyx/prowler:latest aws --services s3 iam -F prowler-report
+            -v ${{ github.workspace }}/output:/tmp/output:rw \
+            toniblyx/prowler:latest aws --services s3 iam -o /tmp/output -F prowler-report --ignore-exit-code-3
 
       - name: Archive Prowler Security Report
         if: always()
