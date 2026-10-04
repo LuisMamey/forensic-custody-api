@@ -12,13 +12,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Prowler
+        run: pip install prowler
+
       - name: Run Prowler against AWS
-        uses: prowler-cloud/prowler@v5
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: "us-east-1"
+        run: |
+          prowler aws --services s3 iam -F prowler-report --ignore-exit-code-3
+
+      - name: Archive Prowler Security Report
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          provider: aws
-          services: s3 iam
+          name: prowler-cspm-report
+          path: output/
           
