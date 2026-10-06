@@ -90,3 +90,16 @@ resource "aws_s3_bucket_logging" "evidence" {
   target_bucket = aws_s3_bucket.evidence_logs.id
   target_prefix = "evidence-access-logs/"
 }
+
+# Server-Side Encryption with Customer Managed Key (CMK)
+resource "aws_s3_bucket_server_side_encryption_configuration" "evidence" {
+  bucket = aws_s3_bucket.evidence.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      kms_master_key_id = aws_kms_key.evidence.arn
+      sse_algorithm     = "aws:kms"
+    }
+    bucket_key_enabled = true
+  }
+}
