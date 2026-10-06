@@ -39,18 +39,26 @@ type EvidenceItem struct {
 	Description  string         `json:"description"`
 	EvidenceType EvidenceType   `json:"evidence_type"`
 	SHA256Hash   string         `json:"sha256_hash"`
+	SHA512Hash   string         `json:"sha512_hash"`
+	SizeBytes    int64          `json:"size_bytes"`
 	StorageURI   string         `json:"storage_uri"`
 	Status       EvidenceStatus `json:"status"`
 	CreatedAt    time.Time      `json:"created_at"`
 }
 
-// CustodyLog records an immutable chain of custody event, ensuring traceability and data integrity.
+// GenesisHash represents the starting hash for the first block in an evidence custody chain.
+const GenesisHash = "0000000000000000000000000000000000000000000000000000000000000000"
+
+// CustodyLog represents a cryptographically chained block in the chain of custody ledger.
 type CustodyLog struct {
 	ID                string    `json:"id"`
 	EvidenceID        string    `json:"evidence_id"`
+	SequenceNumber    int64     `json:"sequence_number"`
 	TransferredBy     string    `json:"transferred_by"`
 	TransferredTo     string    `json:"transferred_to"`
 	ActionTaken       string    `json:"action_taken"`
 	IntegrityVerified bool      `json:"integrity_verified"`
+	PreviousHash      string    `json:"previous_hash"`
+	BlockHash         string    `json:"block_hash"`
 	Timestamp         time.Time `json:"timestamp"`
 }

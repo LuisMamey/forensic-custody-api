@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"time"
+	"github.com/LuisMamey/forensic-custody-api/internal/crypto"
 	"github.com/LuisMamey/forensic-custody-api/internal/models"
 	"github.com/LuisMamey/forensic-custody-api/internal/storage"
 )
@@ -60,4 +61,67 @@ func (s *Server) ListEvidenceByCase(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(items)
+}
+
+// UploadEvidencePayload handles raw streaming evidence uploads.
+// It computes dual SHA-256 and SHA-512 hashes in a single pass over r.Body
+// without loading the entire payload into RAM.
+func (s *Server) UploadEvidencePayload(w http.ResponseWriter, r *http.Request) {
+	caseID := r.PathValue("caseID")
+	if caseID == "" {
+		http.Error(w, "missing caseID", http.StatusBadRequest)
+		return
+	}
+
+	if _, err := s.repo.GetCaseByID(caseID); err != nil {
+		if errors.Is(err, storage.ErrNotFound) {
+			http.Error(w, "case not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	hashResult, err := crypto.ComputeDualStreamHash(r.Body)
+	if err != nil {
+		http.Error(w, "failed to process evidence stream: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	id, err := generateID()
+	if err != nil {
+		http.Error(w, "failed to generate id", http.StatusInternalServerError)
+		return
+	}
+
+	desc := r.Header.Get("X-Evidence-Description")
+	if desc == "" {
+		desc = "Binary evidence artifact"
+	}
+
+	evidenceType := models.EvidenceType(r.Header.Get("X-Evidence-Type"))
+	if evidenceType == "" {
+		evidenceType = models.EvidenceTypeDiskImage
+	}
+
+	item := models.EvidenceItem{
+		ID:           id,
+		CaseID:       caseID,
+		Description:  desc,
+		EvidenceType: evidenceType,
+		SHA256Hash:   hashResult.SHA256,
+		SHA512Hash:   hashResult.SHA512,
+		SizeBytes:    hashResult.BytesRead,
+		Status:       models.EvidenceStatusSecured,
+		CreatedAt:    time.Now().UTC(),
+	}
+
+	if err := s.repo.CreateEvidence(item); err != nil {
+		http.Error(w, "failed to store evidence metadata: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(item)
 }

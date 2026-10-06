@@ -138,7 +138,9 @@ func (s *MemoryStorage) AddCustodyLog(log models.CustodyLog) error {
 		return ErrNotFound
 	}
 
-	log.Timestamp = time.Now().UTC()
+	if log.Timestamp.IsZero() {
+		log.Timestamp = time.Now().UTC()
+	}
 	s.custodyLogs[log.EvidenceID] = append(s.custodyLogs[log.EvidenceID], log)
 	return nil
 }

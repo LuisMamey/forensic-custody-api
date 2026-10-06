@@ -23,6 +23,8 @@ func main() {
 	mux.HandleFunc("GET /cases/{caseID}/evidence", server.ListEvidenceByCase)
 	mux.HandleFunc("POST /evidence/{evidenceID}/custody-logs", server.AddCustodyLog)
 	mux.HandleFunc("GET /evidence/{evidenceID}/custody-logs", server.ListCustodyLogsByEvidence)
+	mux.HandleFunc("POST /cases/{caseID}/evidence/upload", server.UploadEvidencePayload)
+	mux.HandleFunc("GET /evidence/{evidenceID}/custody-logs/verify", server.VerifyCustodyChain)
 
 	log.Println("listening on :8080")
 
