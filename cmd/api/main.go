@@ -4,7 +4,9 @@ package main
 import (
 	"log"
 	"net/http"
+	"time"
 
+	"github.com/LuisMamey/forensic-custody-api/internal/crypto"
 	"github.com/LuisMamey/forensic-custody-api/internal/api"
 	"github.com/LuisMamey/forensic-custody-api/internal/storage"
 )
@@ -13,7 +15,8 @@ import (
 // and starts the server listening on port 8080.
 func main() {
 	repo := storage.NewMemoryStorage()
-	server := api.NewServer(repo)
+	tsa := crypto.NewHTTPTSAClient("https://freetsa.org/tsr", 3*time.Second)
+	server := api.NewServer(repo, tsa)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthHandler)

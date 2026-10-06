@@ -14,7 +14,7 @@ import (
 
 func TestCustodyLedger_ChainedIntegration(t *testing.T) {
 	repo := storage.NewMemoryStorage()
-	server := api.NewServer(repo)
+	server := api.NewServer(repo, nil)
 
 	caseItem := models.Case{ID: "case-001", Title: "Investigation Alpha"}
 	if err := repo.CreateCase(caseItem); err != nil {

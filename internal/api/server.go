@@ -3,15 +3,20 @@
 package api
 
 import (
+	"github.com/LuisMamey/forensic-custody-api/internal/crypto"
 	"github.com/LuisMamey/forensic-custody-api/internal/storage"
 )
 
-// Server holds the dependencies shared by all HTTP handlers.
+// Server encapsulates HTTP handlers and dependencies for the forensic API.
 type Server struct {
-	repo storage.Repository
+	repo      storage.Repository
+	tsaClient crypto.TSAClient
 }
 
-// NewServer creates a Server backed by the given repository.
-func NewServer(repo storage.Repository) *Server {
-	return &Server{repo: repo}
+// NewServer initializes a new Server with required dependencies.
+func NewServer(repo storage.Repository, tsaClient crypto.TSAClient) *Server {
+	return &Server{
+		repo:      repo,
+		tsaClient: tsaClient,
+	}
 }

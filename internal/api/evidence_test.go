@@ -17,7 +17,7 @@ import (
 
 func TestUploadEvidencePayload_StreamingIntegration(t *testing.T) {
 	repo := storage.NewMemoryStorage()
-	server := api.NewServer(repo)
+	server := api.NewServer(repo, nil)
 
 	caseItem := models.Case{
 		ID:               "case-corp-001",

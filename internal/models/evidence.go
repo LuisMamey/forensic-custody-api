@@ -60,5 +60,6 @@ type CustodyLog struct {
 	IntegrityVerified bool      `json:"integrity_verified"`
 	PreviousHash      string    `json:"previous_hash"`
 	BlockHash         string    `json:"block_hash"`
+	RFC3161Token      string    `json:"rfc3161_token,omitempty"`
 	Timestamp         time.Time `json:"timestamp"`
 }
