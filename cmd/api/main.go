@@ -8,6 +8,7 @@ import (
 
 	"github.com/LuisMamey/forensic-custody-api/internal/crypto"
 	"github.com/LuisMamey/forensic-custody-api/internal/api"
+	"github.com/LuisMamey/forensic-custody-api/internal/auth"
 	"github.com/LuisMamey/forensic-custody-api/internal/storage"
 )
 
@@ -18,16 +19,36 @@ func main() {
 	tsa := crypto.NewHTTPTSAClient("https://freetsa.org/tsr", 3*time.Second)
 	server := api.NewServer(repo, tsa)
 
+	// In a production deployment, this secret is injected via AWS Secrets Manager / ESO
+	tokenSvc := auth.NewTokenService("forensic-custody-enterprise-secret-key-32b")
+
+	// RBAC Middleware helpers
+	anyAuthenticated := auth.RequireRole(tokenSvc,
+		auth.RoleInvestigator,
+		auth.RoleLabAnalyst,
+		auth.RoleEvidenceCustodian,
+		auth.RoleAuditor,
+	)
+	investigatorOnly := auth.RequireRole(tokenSvc, auth.RoleInvestigator)
+	evidenceIntake := auth.RequireRole(tokenSvc, auth.RoleInvestigator, auth.RoleEvidenceCustodian)
+	custodyTransfer := auth.RequireRole(tokenSvc, auth.RoleLabAnalyst, auth.RoleEvidenceCustodian)
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthHandler)
-	mux.HandleFunc("POST /cases", server.CreateCase)
-	mux.HandleFunc("GET /cases", server.ListCases)
-	mux.HandleFunc("POST /cases/{caseID}/evidence", server.CreateEvidence)
-	mux.HandleFunc("GET /cases/{caseID}/evidence", server.ListEvidenceByCase)
-	mux.HandleFunc("POST /evidence/{evidenceID}/custody-logs", server.AddCustodyLog)
-	mux.HandleFunc("GET /evidence/{evidenceID}/custody-logs", server.ListCustodyLogsByEvidence)
-	mux.HandleFunc("POST /cases/{caseID}/evidence/upload", server.UploadEvidencePayload)
-	mux.HandleFunc("GET /evidence/{evidenceID}/custody-logs/verify", server.VerifyCustodyChain)
+
+	// Case management
+	mux.Handle("POST /cases", investigatorOnly(http.HandlerFunc(server.CreateCase)))
+	mux.Handle("GET /cases", anyAuthenticated(http.HandlerFunc(server.ListCases)))
+
+	// Evidence intake and streaming
+	mux.Handle("POST /cases/{caseID}/evidence", evidenceIntake(http.HandlerFunc(server.CreateEvidence)))
+	mux.Handle("POST /cases/{caseID}/evidence/upload", evidenceIntake(http.HandlerFunc(server.UploadEvidencePayload)))
+	mux.Handle("GET /cases/{caseID}/evidence", anyAuthenticated(http.HandlerFunc(server.ListEvidenceByCase)))
+
+	// Custody ledger and verification
+	mux.Handle("POST /evidence/{evidenceID}/custody-logs", custodyTransfer(http.HandlerFunc(server.AddCustodyLog)))
+	mux.Handle("GET /evidence/{evidenceID}/custody-logs", anyAuthenticated(http.HandlerFunc(server.ListCustodyLogsByEvidence)))
+	mux.Handle("GET /evidence/{evidenceID}/custody-logs/verify", anyAuthenticated(http.HandlerFunc(server.VerifyCustodyChain)))
 
 	log.Println("listening on :8080")
 
