@@ -50,6 +50,22 @@ jobs:
       - name: Run Govulncheck
         run: govulncheck ./...
 
+  fuzz:
+    name: Fuzz Testing (Go Native)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version: "1.27.0"
+
+      - name: Fuzz JWT Auth Parser
+        run: go test -v -fuzz=FuzzVerifyToken -fuzztime=15s ./internal/auth/
+
+      - name: Fuzz Chained Ledger Verifier
+        run: go test -v -fuzz=FuzzVerifyLedgerChain -fuzztime=15s ./internal/crypto/
+
   trivy-image:
     name: Container Security (Trivy)
     runs-on: ubuntu-latest
