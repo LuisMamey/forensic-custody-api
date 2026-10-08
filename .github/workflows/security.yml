@@ -133,9 +133,8 @@ jobs:
           done
 
       - name: Run ZAP API scan
-        uses: zaproxy/action-api-scan@4d57c294ec665d9d783a31c552084c8e76cfa4cb # v0.9.0
+        uses: zaproxy/action-api-scan@ccc90a47326ec588e44299b867c2936cc842ecb8 # v0.9.0
         with:
           target: "http://localhost:8080/openapi.yaml"
           format: openapi
           cmd_options: "-a"
-          
