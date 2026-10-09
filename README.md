@@ -1,5 +1,7 @@
 # forensic-custody-api
 
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/LuisMamey/forensic-custody-api/badge)](https://scorecard.dev/viewer/?uri=github.com/LuisMamey/forensic-custody-api)
+
 A small REST API in Go for tracking the chain of custody of digital forensic evidence: cases, evidence items, and an append-only log of every transfer or action taken on that evidence.
 
 The API itself is the pretext. The real purpose of this project is a hands-on, end-to-end DevSecOps pipeline built around it — every tool below was chosen, configured, and verified by hand, not copied from a template.
