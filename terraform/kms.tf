@@ -21,9 +21,9 @@ resource "aws_kms_alias" "evidence" {
 
 # Key Policy enforcing Least Privilege and Separation of Duties
 data "aws_iam_policy_document" "kms_evidence_key_policy" {
-  #checkov:skip=CKV_AWS_109:Root account requires full management to delegate IAM policies
-  #checkov:skip=CKV_AWS_111:KMS key policies require resource wildcard to reference the key itself
-  #checkov:skip=CKV_AWS_356:KMS key policies require resource wildcard to reference the key itself
+  #checkov:skip=CKV_AWS_109:Accepted risk — see docs/adr/0007-kms-key-policy-architecture.md
+  #checkov:skip=CKV_AWS_111:Accepted risk — see docs/adr/0007-kms-key-policy-architecture.md
+  #checkov:skip=CKV_AWS_356:Accepted risk — see docs/adr/0007-kms-key-policy-architecture.md
 
   statement {
     sid    = "EnableRootIAMManagement"
