@@ -5,8 +5,8 @@ This document defines the technical evolution of `forensic-custody-api`. The obj
 
 ```mermaid
 flowchart LR
-    S1["Sprint 1: DevSecOps Base & CI/CD Supply Chain<br/>(Completed)"] --> S2["Sprint 2: Domain Engineering & Forensic Data Integrity<br/>(In Progress)"]
-    S2 --> S3["Sprint 3: Cloud-Native Platform, Runtime Security & SRE<br/>(Planned)"]
+    S1["Sprint 1: DevSecOps Base & CI/CD Supply Chain<br/>(Completed)"] --> S2["Sprint 2: Domain Engineering & Forensic Data Integrity<br/>(Completed)"]
+    S2 --> S3["Sprint 3: Cloud-Native Platform, Runtime Security & SRE<br/>(In Progress)"]
 ```
 
 ---
@@ -48,36 +48,36 @@ flowchart LR
 ---
 
 ### SPRINT 2: Domain Engineering & Forensic Data Integrity
-*Status: In Progress*
+*Status: Completed*
 
 #### Phase 1: Threat Modeling & Infrastructure Baseline (First Step)
-1. **Threat Modeling (Security by Design)** | `STRIDE Framework` — Formal analysis of forensic data spoofing, tampering, repudiation, info disclosure, DoS, and elevation of privilege (`docs/STRIDE_THREAT_MODEL.md`).
-2. **IaC Remote State Locking** | `Terraform S3 Backend + DynamoDB Lock` — Prevent concurrent pipeline state corruption and ensure encrypted state storage (`terraform/backend.tf`).
-3. **AWS Workload Identity Federation (CIEM / Zero-Trust)** | `AWS IAM OIDC + GitHub Actions` — Elimination of static long-lived IAM keys; ephemeral STS tokens scoped to repository branch.
-4. **Vulnerability Prioritization & Ingestion (ASPM)** | `OWASP DefectDojo + EPSS/CISA KEV Prioritization` — Centralized triage combining CVSS, Exploit Prediction Scoring System (EPSS), and active exploited vulnerabilities (`docs/ASPM_DEFECTDOJO_ARCHITECTURE.md`).
+1. [x] **Threat Modeling (Security by Design)** | `STRIDE Framework` — Formal analysis of forensic data spoofing, tampering, repudiation, info disclosure, DoS, and elevation of privilege (`docs/STRIDE_THREAT_MODEL.md`).
+2. [x] **IaC Remote State Locking** | `Terraform S3 Backend + DynamoDB Lock` — Prevent concurrent pipeline state corruption and ensure encrypted state storage (`terraform/backend.tf`).
+3. [x] **AWS Workload Identity Federation (CIEM / Zero-Trust)** | `AWS IAM OIDC + GitHub Actions` — Elimination of static long-lived IAM keys; ephemeral STS tokens scoped to repository branch.
+4. [x] **Vulnerability Prioritization & Ingestion (ASPM)** | `OWASP DefectDojo + EPSS/CISA KEV Prioritization` — Centralized triage combining CVSS, Exploit Prediction Scoring System (EPSS), and active exploited vulnerabilities (`docs/ASPM_DEFECTDOJO_ARCHITECTURE.md`).
 
 #### Phase 2: Forensic Domain Integrity & Cryptography (The Core Product)
-1. **Evidence Cryptographic Hashing** | `SHA-256 / SHA-512 Streams` — Dual-hash stream computation upon ingest to guarantee bit-level forensic immutability without loading entire files into memory.
-2. **Immutable Audit Ledger (Chained Hashing / Merkle Tree)** | `Cryptographic Audit Chain` — Each custody transition (`SEIZED -> IN_TRANSIT -> LAB_ANALYSIS -> VAULT_STORED`) records the hash of the preceding block to prevent record rewriting.
-3. **Trusted Time Verification** | `RFC 3161 Timestamping Protocol (TSP)` — Cryptographic proof of existence at a specific time via public or simulated Time Stamping Authority (TSA).
-4. **Envelope Encryption & Key Management** | `AWS KMS Customer Managed Keys (CMK)` — Dedicated KMS key with automatic rotation, enforcing least-privilege key policies for evidence payload encryption.
-5. **Authentication, Authorization & Forensic RBAC** | `JWT / Mutual TLS (mTLS) + Role Claims` — Strict role boundaries (`INVESTIGATOR`, `LAB_ANALYST`, `EVIDENCE_CUSTODIAN`, `AUDITOR`) with tamper-evident audit logs.
+1. [x] **Evidence Cryptographic Hashing** | `SHA-256 / SHA-512 Streams` — Dual-hash stream computation upon ingest to guarantee bit-level forensic immutability without loading entire files into memory.
+2. [x] **Immutable Audit Ledger (Chained Hashing / Merkle Tree)** | `Cryptographic Audit Chain` — Each custody transition (`SEIZED -> IN_TRANSIT -> LAB_ANALYSIS -> VAULT_STORED`) records the hash of the preceding block to prevent record rewriting.
+3. [x] **Trusted Time Verification** | `RFC 3161 Timestamping Protocol (TSP)` — Cryptographic proof of existence at a specific time via public or simulated Time Stamping Authority (TSA).
+4. [x] **Envelope Encryption & Key Management** | `AWS KMS Customer Managed Keys (CMK)` — Dedicated KMS key with automatic rotation, enforcing least-privilege key policies for evidence payload encryption.
+5. [x] **Authentication, Authorization & Forensic RBAC** | `JWT / Mutual TLS (mTLS) + Role Claims` — Strict role boundaries (`INVESTIGATOR`, `LAB_ANALYST`, `EVIDENCE_CUSTODIAN`, `AUDITOR`) with tamper-evident audit logs.
 
 #### Phase 3: Domain Quality Assurance & Supply Chain Hardening
-1. **Native Go Fuzzing & Resilience Tests** | `go test -fuzz` + Table-Driven Unit Tests — Fuzzing payload parsers and metadata decoders to prevent panic conditions and buffer overflow scenarios.
-2. **CI/CD Supply Chain Hardening (SLSA L3 Readiness)** | `SHA Pinning & Runner Permissions` — Pin all GitHub Actions to full 40-character commit SHAs and enforce top-level `permissions: contents: read` across all workflows.
-3. **OpenSSF Scorecard Integration** | `OpenSSF Scorecard Action` — Automated repository posture evaluation and status badge tracking.
+1. [x] **Native Go Fuzzing & Resilience Tests** | `go test -fuzz` + Table-Driven Unit Tests — Fuzzing payload parsers and metadata decoders to prevent panic conditions and buffer overflow scenarios.
+2. [x] **CI/CD Supply Chain Hardening (SLSA L3 Readiness)** | `SHA Pinning & Runner Permissions` — Pin all GitHub Actions to full 40-character commit SHAs and enforce top-level `permissions: contents: read` across all workflows.
+3. [x] **OpenSSF Scorecard Integration** | `OpenSSF Scorecard Action` — Automated repository posture evaluation and status badge tracking.
 
 ---
 
 ### SPRINT 3: Cloud-Native Platform, Runtime Security & SRE
-*Status: Planned*
+*Status: In Progress*
 
 #### Phase 1: Network & Orchestration Platform (AWS Cloud Infrastructure)
-1. **Network Segmentation & VPC Architecture** | `Terraform AWS VPC Module` — Isolated subnets: public subnets for ingress ALB, private subnets for EKS worker nodes, and isolated subnets for persistence.
-2. **Kubernetes Cluster with Hardened Operating System** | `AWS EKS + Bottlerocket OS` — Purpose-built, read-only root filesystem container OS with SELinux in enforcing mode (eliminating need for manual Packer Golden Images).
-3. **Application Ingress & Edge Protection** | `AWS ALB + AWS WAF` — Application Load Balancer with TLS 1.3 edge termination (ADR 0001) and AWS WAF rate limiting / OWASP Top 10 rule group protection.
-4. **Zero-Trust Secrets Synchronization** | `External Secrets Operator (ESO) + AWS Secrets Manager` — Synchronize dynamic secrets into ephemeral Kubernetes native Secrets using EKS Pod Identity / IRSA.
+1. [x] **Network Segmentation & VPC Architecture** | `Terraform AWS VPC Module` — Isolated subnets: public subnets for ingress ALB, private subnets for EKS worker nodes, and isolated subnets for persistence.
+2. [x] **Kubernetes Cluster with Hardened Operating System** | `AWS EKS + Bottlerocket OS` — Purpose-built, read-only root filesystem container OS with SELinux in enforcing mode (eliminating need for manual Packer Golden Images).
+3. [x] **Application Ingress & Edge Protection** | `AWS ALB + AWS WAF` — Application Load Balancer with TLS 1.3 edge termination (ADR 0001) and AWS WAF rate limiting / OWASP Top 10 rule group protection.
+4. [x] **Zero-Trust Secrets Synchronization** | `External Secrets Operator (ESO) + AWS Secrets Manager` — Synchronize dynamic secrets into ephemeral Kubernetes native Secrets using EKS Pod Identity / IRSA.
 
 #### Phase 2: Runtime Security & Admission Governance
 1. **Cryptographic Admission Control** | `Kyverno` — Reject pods running as root, enforce read-only root filesystems, and **verify Cosign signatures against the Rekor transparency log** before pod admission.
