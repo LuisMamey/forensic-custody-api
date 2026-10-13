@@ -1,0 +1,40 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-root-and-privileged
+  annotations:
+    policies.kyverno.io/title: Disallow Root and Privileged Containers
+    policies.kyverno.io/category: Pod Security Standards (Restricted)
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      Restricts containers from running as root, escalating privileges,
+      or having a writable root filesystem, aligning with the restricted
+      profile of Kubernetes Pod Security Standards.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-non-root-and-readonly
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: >-
+          Containers must run as non-root (runAsNonRoot=true), disallow privilege escalation
+          (allowPrivilegeEscalation=false), drop all capabilities, and have a read-only root filesystem.
+        pattern:
+          spec:
+            =(securityContext):
+              =(runAsNonRoot): true
+            containers:
+              - securityContext:
+                  =(runAsNonRoot): true
+                  allowPrivilegeEscalation: false
+                  readOnlyRootFilesystem: true
+                  capabilities:
+                    drop:
+                      - ALL
+                      
