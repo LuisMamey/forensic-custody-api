@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: valid-forensic-api-pod
+  labels:
+    app: forensic-custody-api
+spec:
+  securityContext:
+    runAsNonRoot: true
+  containers:
+    - name: api
+      image: ghcr.io/luismamey/forensic-custody-api:latest
+      securityContext:
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop:
+            - ALL
+            

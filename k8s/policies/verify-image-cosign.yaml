@@ -1,0 +1,33 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: verify-image-cosign
+  annotations:
+    policies.kyverno.io/title: Verify Cosign Image Signatures
+    policies.kyverno.io/category: Supply Chain Security
+    policies.kyverno.io/severity: critical
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      Verifies that container images deployed to the cluster are cryptographically
+      signed by Cosign using Keyless Sigstore OIDC identities from GitHub Actions.
+spec:
+  validationFailureAction: Enforce
+  background: false
+  rules:
+    - name: verify-forensic-api-signature
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      verifyImages:
+        - imageReferences:
+            - "ghcr.io/luismamey/forensic-custody-api*"
+          attestors:
+            - entries:
+                - keyless:
+                    issuer: "https://token.actions.githubusercontent.com"
+                    subject: "https://github.com/LuisMamey/forensic-custody-api/.github/workflows/supply-chain.yml@refs/heads/main"
+                    rekor:
+                      url: "https://rekor.sigstore.dev"
+                      

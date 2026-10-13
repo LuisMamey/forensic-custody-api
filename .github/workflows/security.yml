@@ -144,3 +144,12 @@ jobs:
           format: openapi
           cmd_options: "-a"
           
+  kyverno:
+    name: Admission Policies (Kyverno)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Run Kyverno Tests
+        run: |
+          docker run --rm -v "${{ github.workspace }}/k8s/policies:/workspace" -w /workspace ghcr.io/kyverno/kyverno-cli:v1.13.0 test .
