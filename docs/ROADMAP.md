@@ -86,7 +86,7 @@ flowchart LR
 
 #### Phase 3: Observability, Metrics & SRE Operations
 1. [x] **Unified Observability Platform** | `Prometheus + OpenTelemetry (OTel)` — Native OTel instrumentation in Go exporting metrics and traces to Prometheus / Jaeger (Open source standard).
-2. **Service Level Objectives (SLO) & Error Budgets** | Measurable targets:
+2. [x] **Service Level Objectives (SLO) & Error Budgets** | Measurable targets:
    - **Availability SLI/SLO:** 99.9% of HTTP requests return non-5xx status over 30 days.
    - **Latency SLI/SLO:** 99th percentile (p99) response time < 250ms for evidence metadata read operations.
 3. **Load & Stress Testing** | `k6` — Automated performance and threshold testing validating SLOs under concurrency.
