@@ -85,7 +85,7 @@ flowchart LR
 3. [x] **HTTP Server Resilience & Graceful Shutdown** | `Go net/http Timeouts & Signal Handling` — Strict `ReadHeaderTimeout`, `ReadTimeout`, `WriteTimeout` (Slowloris mitigation) and graceful drain via `signal.NotifyContext` and `server.Shutdown`.
 
 #### Phase 3: Observability, Metrics & SRE Operations
-1. **Unified Observability Platform** | `Prometheus + OpenTelemetry (OTel)` — Native OTel instrumentation in Go exporting metrics and traces to Prometheus / Jaeger (Open source standard).
+1. [x] **Unified Observability Platform** | `Prometheus + OpenTelemetry (OTel)` — Native OTel instrumentation in Go exporting metrics and traces to Prometheus / Jaeger (Open source standard).
 2. **Service Level Objectives (SLO) & Error Budgets** | Measurable targets:
    - **Availability SLI/SLO:** 99.9% of HTTP requests return non-5xx status over 30 days.
    - **Latency SLI/SLO:** 99th percentile (p99) response time < 250ms for evidence metadata read operations.

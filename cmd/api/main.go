@@ -14,6 +14,8 @@ import (
 	"github.com/LuisMamey/forensic-custody-api/internal/auth"
 	"github.com/LuisMamey/forensic-custody-api/internal/crypto"
 	"github.com/LuisMamey/forensic-custody-api/internal/storage"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/LuisMamey/forensic-custody-api/internal/telemetry"
 )
 
 // main initializes the in-memory repository, registers the HTTP routes,
@@ -54,11 +56,14 @@ func main() {
 	mux.Handle("GET /evidence/{evidenceID}/custody-logs", anyAuthenticated(http.HandlerFunc(server.ListCustodyLogsByEvidence)))
 	mux.Handle("GET /evidence/{evidenceID}/custody-logs/verify", anyAuthenticated(http.HandlerFunc(server.VerifyCustodyChain)))
 
+	// Prometheus metrics endpoint
+	mux.Handle("GET /metrics", promhttp.Handler())
+
 	// TLS is intentionally terminated at the edge (AWS ALB) — see docs/adr/0001-tls-termination.md.
 	// nosemgrep: go.lang.security.audit.net.use-tls.use-tls
 	srv := &http.Server{
 		Addr:              ":8080",
-		Handler:           securityHeaders(mux),
+		Handler:           securityHeaders(telemetry.MetricsMiddleware(mux)),
 		ReadHeaderTimeout: 5 * time.Second,  // Slowloris mitigation
 		ReadTimeout:       15 * time.Second, // Max time to read request body
 		WriteTimeout:      30 * time.Second, // Max time to stream response / compute crypto
