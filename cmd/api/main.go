@@ -2,13 +2,17 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
-	"github.com/LuisMamey/forensic-custody-api/internal/crypto"
 	"github.com/LuisMamey/forensic-custody-api/internal/api"
 	"github.com/LuisMamey/forensic-custody-api/internal/auth"
+	"github.com/LuisMamey/forensic-custody-api/internal/crypto"
 	"github.com/LuisMamey/forensic-custody-api/internal/storage"
 )
 
@@ -50,11 +54,48 @@ func main() {
 	mux.Handle("GET /evidence/{evidenceID}/custody-logs", anyAuthenticated(http.HandlerFunc(server.ListCustodyLogsByEvidence)))
 	mux.Handle("GET /evidence/{evidenceID}/custody-logs/verify", anyAuthenticated(http.HandlerFunc(server.VerifyCustodyChain)))
 
-	log.Println("listening on :8080")
-
-	// TLS is intentionally not handled here — see docs/adr/0001-tls-termination.md.
+	// TLS is intentionally terminated at the edge (AWS ALB) — see docs/adr/0001-tls-termination.md.
 	// nosemgrep: go.lang.security.audit.net.use-tls.use-tls
-	log.Fatal(http.ListenAndServe(":8080", securityHeaders(mux)))
+	srv := &http.Server{
+		Addr:              ":8080",
+		Handler:           securityHeaders(mux),
+		ReadHeaderTimeout: 5 * time.Second,  // Slowloris mitigation
+		ReadTimeout:       15 * time.Second, // Max time to read request body
+		WriteTimeout:      30 * time.Second, // Max time to stream response / compute crypto
+		IdleTimeout:       60 * time.Second, // Keep-alive connection pool hygiene
+	}
+
+	// Trap OS termination signals for Graceful Shutdown
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	// Run the HTTP server in an asynchronous goroutine
+	serverErrors := make(chan error, 1)
+	go func() {
+		log.Println("listening on :8080 (hardened net/http server)")
+		// nosemgrep: go.lang.security.audit.net.use-tls.use-tls
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			serverErrors <- err
+		}
+	}()
+
+	// Block until receiving a termination signal or encountering an unexpected startup error
+	select {
+	case err := <-serverErrors:
+		log.Fatalf("server encountered unexpected fatal error: %v", err)
+	case <-ctx.Done():
+		log.Println("shutdown signal received, commencing graceful drain of active connections...")
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+
+		if err := srv.Shutdown(shutdownCtx); err != nil {
+			log.Printf("graceful shutdown failed, forcing server closure: %v", err)
+			if closeErr := srv.Close(); closeErr != nil {
+				log.Fatalf("error forcing server closure: %v", closeErr)
+			}
+		}
+		log.Println("graceful shutdown completed successfully")
+	}
 }
 
 // healthHandler reports that the service is up and reachable.

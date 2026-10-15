@@ -82,7 +82,7 @@ flowchart LR
 #### Phase 2: Runtime Security & Admission Governance
 1. [x] **Cryptographic Admission Control** | `Kyverno` — Reject pods running as root, enforce read-only root filesystems, and **verify Cosign signatures against the Rekor transparency log** before pod admission.
 2. [x] **Kernel Syscall Anomaly Detection (CWPP)** | `Falco (eBPF Driver)` — Real-time detection of container escape attempts, unexpected network connections, or unauthorized binary executions in the kernel space.
-3. **HTTP Server Resilience & Graceful Shutdown** | `Go net/http Timeouts & Signal Handling` — Strict `ReadHeaderTimeout`, `ReadTimeout`, `WriteTimeout` (Slowloris mitigation) and graceful drain via `signal.NotifyContext` and `server.Shutdown`.
+3. [x] **HTTP Server Resilience & Graceful Shutdown** | `Go net/http Timeouts & Signal Handling` — Strict `ReadHeaderTimeout`, `ReadTimeout`, `WriteTimeout` (Slowloris mitigation) and graceful drain via `signal.NotifyContext` and `server.Shutdown`.
 
 #### Phase 3: Observability, Metrics & SRE Operations
 1. **Unified Observability Platform** | `Prometheus + OpenTelemetry (OTel)` — Native OTel instrumentation in Go exporting metrics and traces to Prometheus / Jaeger (Open source standard).
