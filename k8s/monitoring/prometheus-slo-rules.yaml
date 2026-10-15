@@ -1,0 +1,65 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: forensic-custody-slo-rules
+  namespace: monitoring
+  labels:
+    role: alert-rules
+    app: forensic-custody-api
+spec:
+  groups:
+    - name: forensic-api-sli-recording-rules
+      interval: 30s
+      rules:
+        # Pre-calculated request rate over 5m
+        - record: job:forensic_http_requests:rate5m
+          expr: sum(rate(forensic_http_requests_total[5m]))
+
+        # Pre-calculated 5xx error rate over 5m
+        - record: job:forensic_http_errors_5xx:rate5m
+          expr: sum(rate(forensic_http_requests_total{status=~"5.."}[5m]))
+
+        # Instantaneous 5-minute Availability SLI
+        - record: job:forensic_availability_sli:ratio5m
+          expr: >
+            (
+              job:forensic_http_requests:rate5m - job:forensic_http_errors_5xx:rate5m
+            ) / job:forensic_http_requests:rate5m
+
+        # Instantaneous p99 GET latency SLI
+        - record: job:forensic_get_latency_p99:seconds5m
+          expr: >
+            histogram_quantile(
+              0.99,
+              sum(rate(forensic_http_request_duration_seconds_bucket{method="GET"}[5m])) by (le)
+            )
+
+    - name: forensic-api-slo-alerts
+      rules:
+        # Alert: High Error Budget Burn Rate (Page / Critical)
+        # Consumes 2% of 30-day budget in 1 hour (Burn Rate = 14.4x)
+        - alert: ForensicApiAvailabilityHighBurnRate
+          expr: >
+            (
+              sum(rate(forensic_http_requests_total{status=~"5.."}[1h]))
+              /
+              sum(rate(forensic_http_requests_total[1h]))
+            ) > (1 - 0.999) * 14.4
+          for: 2m
+          labels:
+            severity: critical
+            slo: availability
+          annotations:
+            summary: "Forensic API Error Budget burning at 14.4x rate"
+            description: "High error rate consumes more than 2% of monthly budget in 1 hour. Current SLI availability breached."
+
+        # Alert: Latency SLO Breach (p99 > 250ms for more than 5 minutes)
+        - alert: ForensicApiLatencyP99Breached
+          expr: job:forensic_get_latency_p99:seconds5m > 0.250
+          for: 5m
+          labels:
+            severity: warning
+            slo: latency
+          annotations:
+            summary: "Forensic API p99 latency exceeds 250ms threshold"
+            description: "The 99th percentile response time for GET operations has been above 250ms for 5 consecutive minutes."
