@@ -152,4 +152,17 @@ jobs:
 
       - name: Run Kyverno Tests
         run: |
-          docker run --rm -v "${{ github.workspace }}/k8s/policies:/workspace" -w /workspace ghcr.io/kyverno/kyverno-cli:v1.13.0 test .
+          docker run --rm -v "${{ github.workspace }}/k8s/policies:/workspace" -w /workspace ghcr.io/kyverno/kyverno-cli:v1.13.0@sha256:ff159bc74c30e0b878e15bda9df7b78a42c7eeabfae62a141d6ccf298801c28c test .
+
+  falco:
+    name: Runtime Security Rules (Falco)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Validate Falco Rules Syntax
+        run: |
+          docker run --rm --entrypoint falco \
+            -v "${{ github.workspace }}/k8s/falco:/custom-rules" \
+            falcosecurity/falco:0.38.2@sha256:cdb6b2e6c8af971d366b2938466d2f247acdb7fd54470b7ea2a8dac21711e4b2 \
+            -V /custom-rules/forensic-api-rules.yaml

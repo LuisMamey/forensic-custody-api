@@ -1,0 +1,50 @@
+- list: forensic_allowed_binaries
+  items: [api]
+
+- list: forensic_containers
+  items: [forensic-custody-api]
+
+- rule: Unauthorized Process in Forensic API Container
+  desc: Detects any process execution inside the forensic API container other than the compiled Go binary
+  condition: >
+    container.name in (forensic_containers) and
+    evt.type = execve and
+    evt.dir = < and
+    not proc.name in (forensic_allowed_binaries)
+  output: >
+    CRITICAL: Unauthorized binary execution in forensic container
+    (user=%user.name user_loginuid=%user.loginuid command=%proc.cmdline
+    exe=%proc.exe parent=%proc.pname container_id=%container.id
+    container_name=%container.name image=%container.image.repository)
+  priority: CRITICAL
+  tags: [forensic_custody, container, mitre_execution, pci_dss_10.2.7]
+
+- rule: Unexpected Outbound Connection from Forensic Pod
+  desc: Detects outbound network connections to unauthorized external ports from the forensic microservice
+  condition: >
+    container.name in (forensic_containers) and
+    evt.type in (connect, sendto) and
+    evt.dir = < and
+    fd.rip != "127.0.0.1" and
+    not fd.sport in (443, 8080) and
+    not fd.rport in (443)
+  output: >
+    WARNING: Outbound connection to non-HTTPS port from forensic container
+    (command=%proc.cmdline connection=%fd.name proto=%fd.l4proto
+    container_name=%container.name)
+  priority: WARNING
+  tags: [forensic_custody, network, mitre_command_and_control]
+
+- rule: Tamper Attempt on Evidence Storage Directory
+  desc: Detects write or unlink operations outside the authorized evidence directory
+  condition: >
+    container.name in (forensic_containers) and
+    evt.type in (unlink, rmdir, rename) and
+    evt.dir = < and
+    fd.name startswith "/evidence"
+  output: >
+    ALERT: Tamper attempt or deletion on forensic evidence storage
+    (user=%user.name file=%fd.name operation=%evt.type
+    command=%proc.cmdline container_name=%container.name)
+  priority: ALERT
+  tags: [forensic_custody, tamper_evidence, mitre_impact]
