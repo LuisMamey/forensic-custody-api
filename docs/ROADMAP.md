@@ -89,7 +89,7 @@ flowchart LR
 2. [x] **Service Level Objectives (SLO) & Error Budgets** | Measurable targets:
    - **Availability SLI/SLO:** 99.9% of HTTP requests return non-5xx status over 30 days.
    - **Latency SLI/SLO:** 99th percentile (p99) response time < 250ms for evidence metadata read operations.
-3. **Load & Stress Testing** | `k6` — Automated performance and threshold testing validating SLOs under concurrency.
+3. [x] **Load & Stress Testing** | `k6` — Automated performance and threshold testing validating SLOs under concurrency.
 4. **Alert Hygiene & Incident Postmortems** | `Alertmanager + Blameless RCA Framework` — Multi-window burn-rate alerts and codified incident review templates (`docs/postmortems/`).
 5. **GitOps Progressive Delivery** | `ArgoCD` — Pull-based GitOps deployment keeping cluster state synchronized with git.
 
