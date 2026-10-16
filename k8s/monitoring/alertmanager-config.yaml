@@ -1,0 +1,64 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: forensic-custody-alertmanager-config
+  namespace: monitoring
+  labels:
+    alertmanagerConfig: forensic-custody
+spec:
+  route:
+    groupBy: ['alertname', 'namespace', 'job']
+    groupWait: 30s
+    groupInterval: 5m
+    repeatInterval: 4h
+    receiver: 'slack-default'
+    routes:
+      # Critical severity: High Error Budget burn rate -> Immediate on-call pager
+      - matchers:
+          - name: severity
+            value: critical
+        receiver: 'pagerduty-critical'
+        groupWait: 10s
+        repeatInterval: 1h
+
+      # Warning severity: Latency degradation or early budget consumption -> Slack channel
+      - matchers:
+          - name: severity
+            value: warning
+        receiver: 'slack-warnings'
+        repeatInterval: 6h
+
+  inhibitRules:
+    # If the forensic API is completely down, inhibit secondary latency alerts
+    - targetMatch:
+        - name: alertname
+          value: ForensicApiLatencyP99Breached
+      sourceMatch:
+        - name: alertname
+          value: ForensicApiAvailabilityHighBurnRate
+      equal: ['namespace', 'job']
+
+  receivers:
+    - name: 'slack-default'
+      slackConfigs:
+        - channel: '#forensic-alerts-general'
+          sendResolved: true
+          title: '{{ template "slack.default.title" . }}'
+          text: '{{ template "slack.default.text" . }}'
+
+    - name: 'slack-warnings'
+      slackConfigs:
+        - channel: '#forensic-sre-warnings'
+          sendResolved: true
+          title: '[WARNING] Forensic API Metric Degradation: {{ .CommonAnnotations.summary }}'
+          text: '{{ .CommonAnnotations.description }}'
+
+    - name: 'pagerduty-critical'
+      pagerdutyConfigs:
+        - routingKey:
+            name: pagerduty-credentials
+            key: routing-key
+          severity: 'critical'
+          sendResolved: true
+          description: '[PAGE] Forensic API Error Budget Breached: {{ .CommonAnnotations.summary }}'
+          
