@@ -6,7 +6,7 @@ This document defines the technical evolution of `forensic-custody-api`. The obj
 ```mermaid
 flowchart LR
     S1["Sprint 1: DevSecOps Base & CI/CD Supply Chain<br/>(Completed)"] --> S2["Sprint 2: Domain Engineering & Forensic Data Integrity<br/>(Completed)"]
-    S2 --> S3["Sprint 3: Cloud-Native Platform, Runtime Security & SRE<br/>(In Progress)"]
+    S2 --> S3["Sprint 3: Cloud-Native Platform, Runtime Security & SRE<br/>(Completed)"]
 ```
 
 ---
@@ -71,7 +71,7 @@ flowchart LR
 ---
 
 ### SPRINT 3: Cloud-Native Platform, Runtime Security & SRE
-*Status: In Progress*
+*Status: Completed*
 
 #### Phase 1: Network & Orchestration Platform (AWS Cloud Infrastructure)
 1. [x] **Network Segmentation & VPC Architecture** | `Terraform AWS VPC Module` — Isolated subnets: public subnets for ingress ALB, private subnets for EKS worker nodes, and isolated subnets for persistence.
@@ -91,7 +91,7 @@ flowchart LR
    - **Latency SLI/SLO:** 99th percentile (p99) response time < 250ms for evidence metadata read operations.
 3. [x] **Load & Stress Testing** | `k6` — Automated performance and threshold testing validating SLOs under concurrency.
 4. [x] **Alert Hygiene & Incident Postmortems** | `Alertmanager + Blameless RCA Framework` — Multi-window burn-rate alerts and codified incident review templates (`docs/postmortems/`).
-5. **GitOps Progressive Delivery** | `ArgoCD` — Pull-based GitOps deployment keeping cluster state synchronized with git.
+5. [x] **GitOps Progressive Delivery** | `ArgoCD` — Pull-based GitOps deployment keeping cluster state synchronized with git.
 
 ---
 
