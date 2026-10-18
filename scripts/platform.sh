@@ -245,7 +245,7 @@ cmd_tunnel() {
   check_prereqs
   log_info "Connecting live tunnel to 'forensic-custody-api' inside EKS cluster '${CLUSTER_NAME}'..."
   python3 - "${CLUSTER_NAME}" "${AWS_REGION}" <<'PYEOF'
-import sys, subprocess, json, urllib.request, ssl, time, http.server
+import sys, subprocess, json, urllib.request, ssl, http.server
 
 cluster_name, region = sys.argv[1], sys.argv[2]
 endpoint = subprocess.check_output(
@@ -258,29 +258,6 @@ def get_token():
     ).decode())["status"]["token"]
 
 ctx = ssl._create_unverified_context()
-pinned_img = "ghcr.io/luismamey/forensic-custody-api@sha256:5cd32133b14a6a668243b552b03176c3ec397be0373a9583aed6d7568aa2476d"
-
-# Ensure live Deployment uses the immutable SHA-256 digest immediately
-token = get_token()
-patch_body = json.dumps({"spec": {"template": {"spec": {"containers": [{"name": "api", "image": pinned_img}]}}}}).encode()
-req = urllib.request.Request(
-    f"{endpoint}/apis/apps/v1/namespaces/default/deployments/forensic-custody-api",
-    data=patch_body,
-    method="PATCH",
-    headers={"Authorization": f"Bearer {token}", "Content-Type": "application/strategic-merge-patch+json"}
-)
-try:
-    urllib.request.urlopen(req, context=ctx)
-except Exception:
-    pass
-
-print("Waiting for forensic-custody-api pods to be Running...")
-for _ in range(20):
-    r = urllib.request.Request(f"{endpoint}/api/v1/namespaces/default/pods", headers={"Authorization": f"Bearer {token}"})
-    pods = json.loads(urllib.request.urlopen(r, context=ctx).read())["items"]
-    if any(p["status"].get("phase") == "Running" for p in pods):
-        break
-    time.sleep(2)
 
 class EKSProxyHandler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):

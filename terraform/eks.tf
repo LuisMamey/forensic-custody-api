@@ -20,6 +20,18 @@ module "eks" {
   # Enable EKS Pod Identity agent for secure workload authentication
   enable_cluster_creator_admin_permissions = true
 
+  # Allow EKS Control Plane API proxy to reach forensic-custody-api pods on port 8080
+  node_security_group_additional_rules = {
+    ingress_cluster_8080_api_proxy = {
+      description                   = "Cluster API to node 8080/tcp forensic-custody-api proxy"
+      protocol                      = "tcp"
+      from_port                     = 8080
+      to_port                       = 8080
+      type                          = "ingress"
+      source_cluster_security_group = true
+    }
+  }
+
   # Hardened Node Group running Bottlerocket OS
   eks_managed_node_groups = {
     bottlerocket_nodes = {
