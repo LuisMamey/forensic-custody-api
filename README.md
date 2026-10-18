@@ -2,99 +2,132 @@
 
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/LuisMamey/forensic-custody-api/badge)](https://scorecard.dev/viewer/?uri=github.com/LuisMamey/forensic-custody-api)
 
-A small REST API in Go for tracking the chain of custody of digital forensic evidence: cases, evidence items, and an append-only log of every transfer or action taken on that evidence.
+An enterprise-grade REST API in Go for tracking the digital forensic chain of custody, engineered alongside a full-lifecycle **DevSecOps, Cloud-Native Security, and SRE platform** on AWS and Kubernetes.
 
-The API itself is the pretext. The real purpose of this project is a hands-on, end-to-end DevSecOps pipeline built around it — every tool below was chosen, configured, and verified by hand, not copied from a template.
+Every security gate, cryptographic control, infrastructure module, and observability rule in this repository was built, verified, and integrated from scratch without boilerplate templates.
 
-## Domain model
+---
 
-- **Case** — an investigation, identified by a case number and a lead investigator.
-- **EvidenceItem** — a piece of digital evidence (disk image, memory dump, network capture, system logs) belonging to a case, with a SHA-256 hash and a storage location.
-- **CustodyLog** — an immutable record of who transferred an evidence item to whom, what action was taken, and whether integrity was verified.
+## 1. Forensic Domain & Cryptographic Architecture
 
-## Running it
+- **Case Management (`Case`)** — Investigation containers identified by case number, title, and lead investigator.
+- **Streaming Evidence Intake (`EvidenceItem`)** — Single-pass `io.MultiWriter` streaming computation of dual **SHA-256** and **SHA-512** hashes (`internal/crypto/hasher.go`) without loading large forensic images into memory.
+- **Immutable Chained Custody Ledger (`CustodyLog`)** — Cryptographically linked blocks (`internal/crypto/ledger.go`) where every custody transition binds the SHA-256 digest of the preceding block starting from a deterministic `GenesisHash`.
+- **Trusted Timestamping (`RFC 3161`)** — ASN.1 DER timestamp requests (`internal/crypto/timestamp.go`) against a Time Stamping Authority (TSA) to establish mathematical proof of existence.
+- **Forensic RBAC & Authentication (`internal/auth/`)** — Stateless HMAC-SHA256 JWT validation enforcing least-privilege domain roles:
+  - `INVESTIGATOR` — Create and inspect cases and intake evidence.
+  - `EVIDENCE_CUSTODIAN` — Intake evidence and execute custody transfers.
+  - `LAB_ANALYST` — Execute custody transfers and record forensic analysis actions.
+  - `AUDITOR` — Read-only inspection of cases, evidence, and cryptographic chain verification.
+- **Hardened HTTP Server (`cmd/api/main.go`)** — Explicit Slowloris mitigation timeouts (`ReadHeaderTimeout`, `ReadTimeout`, `WriteTimeout`, `IdleTimeout`) and OS signal trapping (`SIGINT`/`SIGTERM`) for zero-downtime graceful connection draining.
+
+---
+
+## 2. API Endpoints
+
+| Method | Path | Required Role(s) | Purpose |
+|---|---|---|---|
+| `GET` | `/health` | Public (Probe) | Liveness and readiness check |
+| `GET` | `/metrics` | Public (Scraper) | Prometheus telemetry & SLI histograms |
+| `POST` | `/cases` | `INVESTIGATOR` | Create a new forensic investigation case |
+| `GET` | `/cases` | Any Authenticated | List all registered cases |
+| `POST` | `/cases/{caseID}/evidence` | `INVESTIGATOR`, `EVIDENCE_CUSTODIAN` | Register evidence metadata for a case |
+| `POST` | `/cases/{caseID}/evidence/upload` | `INVESTIGATOR`, `EVIDENCE_CUSTODIAN` | Stream binary evidence and compute dual SHA-256/512 |
+| `GET` | `/cases/{caseID}/evidence` | Any Authenticated | List all evidence items for a case |
+| `POST` | `/evidence/{evidenceID}/custody-logs` | `LAB_ANALYST`, `EVIDENCE_CUSTODIAN` | Append a cryptographically chained custody block |
+| `GET` | `/evidence/{evidenceID}/custody-logs` | Any Authenticated | Retrieve full chain of custody history |
+| `GET` | `/evidence/{evidenceID}/custody-logs/verify` | Any Authenticated | Recalculate and verify entire cryptographic ledger chain |
+
+---
+
+## 3. Running Locally
 
 ```bash
 go run ./cmd/api
 ```
 
-or as a container:
+Or inside the rootless **Google Distroless Debian 12** container (`UID 65532`, ~5.6MB, no shell):
 
 ```bash
 docker build -t forensic-custody-api .
 docker run -p 8080:8080 forensic-custody-api
 ```
 
-The server listens on `:8080`.
+Run unit tests and native Go fuzzing targets:
 
-## API
+```bash
+go test -v ./...
+go test -fuzz=FuzzVerifyToken -fuzztime=15s ./internal/auth/
+go test -fuzz=FuzzVerifyLedgerChain -fuzztime=15s ./internal/crypto/
+```
 
-| Method | Path | Purpose |
+---
+
+## 4. End-to-End DevSecOps & Supply Chain Pipelines
+
+All GitHub Actions workflows enforce **SLSA Level 3 readiness** via full 40-character commit SHA pinning and restricted `permissions: contents: read` tokens:
+
+### `.github/workflows/security.yml` (Continuous Security & SRE Gate on PR/Push)
+
+| Job | Tool | Verification Scope |
 |---|---|---|
-| `GET`  | `/health` | Liveness check |
-| `POST` | `/cases` | Create a case |
-| `GET`  | `/cases` | List cases |
-| `POST` | `/cases/{caseID}/evidence` | Add evidence to a case |
-| `GET`  | `/cases/{caseID}/evidence` | List evidence for a case |
-| `POST` | `/evidence/{evidenceID}/custody-logs` | Append a custody log entry |
-| `GET`  | `/evidence/{evidenceID}/custody-logs` | List an evidence item's chain of custody |
+| **Secret Scanning** | `Gitleaks` + `pre-commit` | Full Git history and local pre-commit secret detection |
+| **SAST** | `Semgrep` | Static code analysis uploaded as SARIF to GitHub Security |
+| **SCA** | `Govulncheck` | Call-graph reachability analysis of Go dependencies |
+| **Fuzzing** | `go test -fuzz` | Automated mutation fuzzing on JWT and cryptographic ledger parsers |
+| **Container Scan** | `Trivy` (`--ignore-unfixed`) | High/Critical CVE gate on built Distroless image |
+| **IaC Security** | `Checkov` | AWS Terraform security misconfiguration scanning |
+| **Policy as Code** | `Conftest (OPA Rego)` | Custom Rego v1 policies enforcing tags, naming, and S3 Object Lock |
+| **DAST** | `OWASP ZAP API Scan` | Dynamic OpenAPI-driven active scan against live container |
+| **Admission Control** | `Kyverno CLI` | Policy validation enforcing non-root pods and Cosign image signatures |
+| **Runtime Security** | `Falco` | Kernel eBPF rule syntax validation (`falco -V`) |
+| **SLO Load Testing** | `k6` | Concurrent stress test enforcing `p99 < 250ms` and `errors < 0.1%` |
 
-Storage is in-memory (`internal/storage`) — data does not persist across restarts. IDs are generated server-side with `crypto/rand`, never client-supplied.
+### `.github/workflows/supply-chain.yml` (Artifact Attestation & Signing)
+Builds the production image, generates a **CycloneDX SBOM** (`Syft`), audits OS vs. Go packages with `jq`, enforces a zero-high-CVE gate (`Grype --only-fixed`), publishes to GHCR, and performs **keyless OIDC cryptographic signing and SBOM attestation** via **Sigstore Cosign** recorded in the **Rekor** transparency log.
 
-## The DevSecOps pipeline
+### `.github/workflows/cspm.yml` & `.github/workflows/scorecard.yml`
+- **Live Cloud Posture (CSPM):** Scheduled **Prowler** audits authenticating to AWS via **IAM OIDC federation** (zero static keys).
+- **Repository Hygiene:** Continuous **OpenSSF Scorecard** evaluation and **Dependabot** grouped SemVer updates.
 
-Two GitHub Actions workflows, both built from pinned, directly-invoked tool binaries rather than third-party Marketplace Actions, to avoid adding unnecessary supply-chain trust to the CI itself.
+---
 
-**`.github/workflows/security.yml`** — runs on every push and pull request:
+## 5. Cloud-Native Infrastructure, Runtime Defense & SRE (`terraform/` & `k8s/`)
 
-| Job | Tool | Checks |
-|---|---|---|
-| Secret Scanning | Gitleaks | Credentials/keys committed to Git history |
-| SAST | Semgrep | Insecure code patterns |
-| SCA | Govulncheck | Reachable vulnerabilities in Go and its dependencies |
-| Container Security | Trivy | Vulnerabilities in the built image |
-| IaC Security | Checkov | Terraform misconfigurations |
-| Policy as Code | Conftest | Custom Rego policies (`terraform/policy/`) |
-| DAST | OWASP ZAP | The running API, attacked from the outside |
+`terraform/` provisions a complete Defense-in-Depth AWS environment:
+- **Network Segmentation (`vpc.tf`):** Multi-AZ VPC (`10.0.0.0/16`) with Public DMZ subnets (ALB), Private compute subnets (EKS), and Isolated persistence subnets.
+- **Hardened Kubernetes (`eks.tf`):** **AWS EKS v1.31** control plane with full audit logging and private worker nodes running **AWS Bottlerocket OS** (read-only rootfs with `dm-verity`, no shell, SELinux enforcing).
+- **Edge Protection (`alb.tf`, `waf.tf`):** Public HTTPS **Application Load Balancer** protected by **AWS WAF v2** (Rate limiting 500 req/5min, OWASP Common Rule Set, Known Bad Inputs, and KMS-encrypted CloudWatch audit logs).
+- **Forensic Storage & Cryptography (`s3.tf`, `kms.tf`, `secrets.tf`):** WORM-compliant **S3 Object Lock**, dedicated **AWS KMS Customer Managed Key (CMK)** with automatic rotation, and **AWS Secrets Manager** bound via **EKS Pod Identity**.
+- **In-Cluster Platform Bootstrap (`cluster_addons.tf`):** Automated Helm deployment of:
+  1. **ArgoCD** — Pull-based GitOps controller reconciling `k8s/apps/forensic-custody-api`.
+  2. **Kyverno** — Admission webhook enforcing Pod Security Standards (Restricted) and Rekor Cosign signature verification (`k8s/policies/`).
+  3. **Falco** — Kernel-level eBPF intrusion detection (`modern_ebpf`) monitoring unauthorized binaries, network egress, and storage tampering (`k8s/falco/`).
+  4. **External Secrets Operator (ESO)** — Zero-trust secret synchronization from AWS Secrets Manager.
+  5. **kube-prometheus-stack** — Prometheus Operator & Alertmanager evaluating multi-window SLI/SLO burn-rate rules (`k8s/monitoring/`).
+- **One-Command Platform Lifecycle (`scripts/platform.sh`):**
+  ```bash
+  ./scripts/platform.sh up      # Bootstrap S3/DynamoDB state, verify SHA-256 Helm charts, provision AWS/EKS & GitOps
+  ./scripts/platform.sh status  # Inspect live EKS Bottlerocket nodes, CRDs, policies, and pods
+  ./scripts/platform.sh tunnel  # Open authenticated localhost:8080 proxy tunnel to live EKS pods
+  ./scripts/platform.sh down    # Ordered teardown of Helm operators & hourly-billed AWS infra ($0.00/hr)
+  ```
 
-**`.github/workflows/supply-chain.yml`** — runs on push to `main`: builds the image, generates an SBOM (Syft), scans it (Grype) as a gate before publishing, pushes to GHCR, then signs the image and attests the SBOM with Cosign using keyless signing (no private key ever stored).
+---
 
-## Infrastructure
+## 6. Architecture Decision Records (ADRs) & Engineering Documentation
 
-`terraform/` provisions the AWS side: an S3 bucket for evidence with Object Lock (WORM) enabled, a separate bucket for access logs, and an IAM role/policy scoped to exactly what the API needs — nothing more.
+All architectural trade-offs and risk acceptances are documented in [`docs/adr/`](docs/adr/):
+- [ADR 0001 — Edge TLS Termination at the Load Balancer](docs/adr/0001-tls-termination.md)
+- [ADR 0002 — S3 Security Scope & Lifecycle Preservation](docs/adr/0002-s3-security-scope.md)
+- [ADR 0003 — S3 Object Lock Retention Mode (Governance vs. Compliance)](docs/adr/0003-object-lock-retention-mode.md)
+- [ADR 0004 — Terraform Official Registry Module Pinning](docs/adr/0004-terraform-module-pinning.md)
+- [ADR 0005 — ALB Security Scope & JVM/Log4j Immunity](docs/adr/0005-alb-security-scope.md)
+- [ADR 0006 — Remote State Backend Hardening Scope](docs/adr/0006-backend-state-hardening-scope.md)
+- [ADR 0007 — AWS KMS Key Policy Wildcard Architecture](docs/adr/0007-kms-key-policy-architecture.md)
+- [ADR 0008 — AWS Secrets Manager Rotation Scope with ESO](docs/adr/0008-secrets-manager-rotation-scope.md)
 
-## Documented decisions
-
-Security and architecture decisions with real trade-offs are written up as ADRs in [`docs/adr/`](docs/adr/):
-
-- [0001 — TLS termination at the load balancer, not the app](docs/adr/0001-tls-termination.md)
-- [0002 — Deferred S3 hardening controls](docs/adr/0002-s3-security-scope.md)
-- [0003 — Object Lock retention mode](docs/adr/0003-object-lock-retention-mode.md)
-
-Obvious remediations (a dependency bump for a known CVE, for example) live in their commit messages instead — not every fix needs an ADR.
-
-## Known limitations / out of scope
-
-This is a learning project scoped around the DevSecOps pipeline, not a production-ready service. What's deliberately not here:
-
-**Application-level:**
-- No validation that `status` or `evidence_type` match the enum values defined in `internal/models` — an invalid string is accepted as-is.
-- `ListEvidenceByCase` and `ListCustodyLogsByEvidence` return an empty list when the parent (case/evidence) doesn't exist, instead of `404` — inconsistent with the create endpoints, which do return `404` for a missing parent.
-- No authentication or authorization — anyone who can reach the API can create cases, add evidence, or append custody log entries. Ironic for a chain-of-custody system, and the most significant gap if this were ever real.
-- No persistent storage — data lives in an in-memory map and is lost on every restart.
-- No automated tests (no `_test.go` files anywhere in the repo).
-- No structured logging, request correlation IDs, or graceful shutdown handling.
-- No OpenAPI/Swagger spec — this also limits how thoroughly the DAST job (ZAP) can exercise the API, since its spider can't discover JSON endpoints on its own.
-- No rate limiting or explicit CORS policy.
-
-**Infrastructure / CI:**
-- No compute or load balancer is deployed — Terraform provisions only S3 (evidence storage, IAM-scoped access) and IAM. See [ADR 0001](docs/adr/0001-tls-termination.md) for why TLS depends on a load balancer that doesn't exist yet.
-- No GitHub branch protection rules — the security gate reports pass/fail but nothing currently blocks a merge on failure.
-- No Dependabot/Renovate — a deliberate choice, not an oversight, to avoid the automated-dependency-PR complexity that previously caused friction in another project.
-
-## How this was built
-
-The full narrative — what each tool is, who built it, why it was chosen here, and the real bugs and gotchas hit along the way — is written up in two case files:
-
-- [`docs/PHASE1_HISTORY.md`](docs/PHASE1_HISTORY.md) — the base stack (Go, Docker, Trivy, Gitleaks, Semgrep, Govulncheck, Terraform, Checkov, GitHub Actions).
-- [`docs/PHASE2_HISTORY.md`](docs/PHASE2_HISTORY.md) — Supply Chain Security, Policy as Code, and DAST.
+### Deep-Dive Engineering Guides & Case Files:
+- **Architecture & Threat Modeling:** [`ROADMAP.md`](docs/ROADMAP.md) | [`STRIDE_THREAT_MODEL.md`](docs/STRIDE_THREAT_MODEL.md) | [`IAC_vs_CSPM.md`](docs/IAC_vs_CSPM.md) | [`ASPM_DEFECTDOJO_ARCHITECTURE.md`](docs/ASPM_DEFECTDOJO_ARCHITECTURE.md)
+- **SRE & GitOps Operations:** [`SLO_FRAMEWORK.md`](docs/SLO_FRAMEWORK.md) | [`GITOPS_ARCHITECTURE.md`](docs/GITOPS_ARCHITECTURE.md) | [`INCIDENT-2026-001 Postmortem`](docs/postmortems/INCIDENT-2026-001-K6-JWT-AUTH.md)
+- **Chronological Build Case Files:** [`PHASE1_HISTORY.md`](docs/PHASE1_HISTORY.md) | [`PHASE2_HISTORY.md`](docs/PHASE2_HISTORY.md) | [`PHASE3_HISTORY.md`](docs/PHASE3_HISTORY.md) | [`PHASE4_HISTORY.md`](docs/PHASE4_HISTORY.md) | [`PHASE5_HISTORY.md`](docs/PHASE5_HISTORY.md) | [`PHASE6_HISTORY.md`](docs/PHASE6_HISTORY.md)

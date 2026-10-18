@@ -31,7 +31,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: api
-          image: ghcr.io/luismamey/forensic-custody-api:latest
+          image: ghcr.io/luismamey/forensic-custody-api@sha256:5cd32133b14a6a668243b552b03176c3ec397be0373a9583aed6d7568aa2476d
           imagePullPolicy: IfNotPresent
           ports:
             - name: http

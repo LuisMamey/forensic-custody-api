@@ -1,31 +1,146 @@
 openapi: 3.0.3
 info:
   title: Forensic Custody API
-  description: REST API for tracking chain of custody of digital forensic evidence.
+  description: Enterprise REST API for tracking the cryptographic chain of custody of digital forensic evidence.
   version: 1.0.0
 servers:
   - url: http://localhost:8080
-    description: Local server
+    description: Local / Container server
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: HMAC-SHA256 JWT containing sub, role (INVESTIGATOR, LAB_ANALYST, EVIDENCE_CUSTODIAN, AUDITOR), and exp claims.
+
+  schemas:
+    Case:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "a1b2c3d4e5f60718293a4b5c6d7e8f90"
+        case_number:
+          type: string
+          example: "CASE-2026-001"
+        title:
+          type: string
+          example: "Corporate Ransomware Intrusion Analysis"
+        lead_investigator:
+          type: string
+          example: "Jane Doe"
+        created_at:
+          type: string
+          format: date-time
+
+    EvidenceItem:
+      type: object
+      properties:
+        id:
+          type: string
+        case_id:
+          type: string
+        description:
+          type: string
+          example: "Primary workstation NVMe image"
+        evidence_type:
+          type: string
+          enum: [DISK_IMAGE, MEMORY_DUMP, NETWORK_CAPTURE, SYSTEM_LOGS]
+          example: "DISK_IMAGE"
+        sha256_hash:
+          type: string
+          example: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        sha512_hash:
+          type: string
+          example: "cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e"
+        size_bytes:
+          type: integer
+          format: int64
+          example: 1048576
+        storage_uri:
+          type: string
+          example: "s3://forensic-custody-evidence/case-1/disk.raw"
+        status:
+          type: string
+          enum: [SECURED, UNDER_ANALYSIS, ARCHIVED]
+          example: "SECURED"
+        created_at:
+          type: string
+          format: date-time
+
+    CustodyLog:
+      type: object
+      properties:
+        id:
+          type: string
+        evidence_id:
+          type: string
+        sequence_number:
+          type: integer
+          format: int64
+          example: 0
+        transferred_by:
+          type: string
+          example: "Officer Alice"
+        transferred_to:
+          type: string
+          example: "Analyst Bob"
+        action_taken:
+          type: string
+          example: "SEIZED -> IN_TRANSIT"
+        integrity_verified:
+          type: boolean
+          example: true
+        previous_hash:
+          type: string
+          example: "0000000000000000000000000000000000000000000000000000000000000000"
+        block_hash:
+          type: string
+        rfc3161_token:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+    VerificationResponse:
+      type: object
+      properties:
+        evidence_id:
+          type: string
+        total_blocks:
+          type: integer
+        chain_valid:
+          type: boolean
+        error_message:
+          type: string
 
 paths:
   /health:
     get:
-      summary: Liveness check
+      summary: Liveness and readiness check
       responses:
         '200':
           description: Service is healthy
           content:
-            application/json:
+            text/plain:
               schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: ok
+                type: string
+                example: ok
+
+  /metrics:
+    get:
+      summary: Prometheus metrics scrape endpoint
+      responses:
+        '200':
+          description: Prometheus text-format telemetry metrics
 
   /cases:
     get:
-      summary: List all cases
+      summary: List all forensic cases
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: List of cases
@@ -35,8 +150,12 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Case'
+        '401':
+          description: Unauthorized
     post:
-      summary: Create a new case
+      summary: Create a new forensic case (Requires INVESTIGATOR role)
+      security:
+        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -50,6 +169,9 @@ paths:
                 case_number:
                   type: string
                   example: "CASE-2026-001"
+                title:
+                  type: string
+                  example: "Server Intrusion Investigation"
                 lead_investigator:
                   type: string
                   example: "Jane Doe"
@@ -60,10 +182,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Case'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden for caller role
 
   /cases/{caseID}/evidence:
     get:
-      summary: List evidence for a case
+      summary: List evidence items for a case
+      security:
+        - BearerAuth: []
       parameters:
         - name: caseID
           in: path
@@ -73,8 +201,18 @@ paths:
       responses:
         '200':
           description: List of evidence items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EvidenceItem'
+        '401':
+          description: Unauthorized
     post:
-      summary: Add evidence to a case
+      summary: Register evidence metadata for a case (Requires INVESTIGATOR or EVIDENCE_CUSTODIAN)
+      security:
+        - BearerAuth: []
       parameters:
         - name: caseID
           in: path
@@ -91,29 +229,81 @@ paths:
                 - evidence_type
                 - description
                 - sha256_hash
-                - storage_location
+                - storage_uri
               properties:
                 evidence_type:
                   type: string
-                  example: "disk_image"
+                  example: "DISK_IMAGE"
                 description:
                   type: string
                   example: "Primary workstation image"
                 sha256_hash:
                   type: string
                   example: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-                storage_location:
+                sha512_hash:
                   type: string
-                  example: "s3://forensic-evidence-bucket/case-1/evidence-1.raw"
+                storage_uri:
+                  type: string
+                  example: "s3://forensic-custody-evidence/case-1/evidence-1.raw"
       responses:
         '201':
-          description: Evidence added
+          description: Evidence registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvidenceItem'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Case not found
+
+  /cases/{caseID}/evidence/upload:
+    post:
+      summary: Stream raw binary evidence and compute dual SHA-256 and SHA-512 hashes
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: caseID
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: X-Evidence-Description
+          in: header
+          required: false
+          schema:
+            type: string
+        - name: X-Evidence-Type
+          in: header
+          required: false
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '201':
+          description: Evidence payload hashed and recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvidenceItem'
+        '401':
+          description: Unauthorized
         '404':
           description: Case not found
 
   /evidence/{evidenceID}/custody-logs:
     get:
-      summary: List custody logs for an evidence item
+      summary: List custody chain blocks for an evidence item
+      security:
+        - BearerAuth: []
       parameters:
         - name: evidenceID
           in: path
@@ -122,9 +312,19 @@ paths:
             type: string
       responses:
         '200':
-          description: Custody history
+          description: Custody ledger history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CustodyLog'
+        '401':
+          description: Unauthorized
     post:
-      summary: Append a custody log entry
+      summary: Append a cryptographically chained custody log block (Requires LAB_ANALYST or EVIDENCE_CUSTODIAN)
+      security:
+        - BearerAuth: []
       parameters:
         - name: evidenceID
           in: path
@@ -138,12 +338,11 @@ paths:
             schema:
               type: object
               required:
-                - transferred_from
+                - transferred_by
                 - transferred_to
                 - action_taken
-                - integrity_verified
               properties:
-                transferred_from:
+                transferred_by:
                   type: string
                   example: "Officer Alice"
                 transferred_to:
@@ -151,28 +350,42 @@ paths:
                   example: "Analyst Bob"
                 action_taken:
                   type: string
-                  example: "Transferred to secure lab storage"
-                integrity_verified:
-                  type: boolean
-                  example: true
+                  example: "Transferred to forensic lab storage"
       responses:
         '201':
-          description: Custody log appended
+          description: Custody block appended and chained
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustodyLog'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
         '404':
           description: Evidence not found
 
-components:
-  schemas:
-    Case:
-      type: object
-      properties:
-        id:
-          type: string
-        case_number:
-          type: string
-        lead_investigator:
-          type: string
-        created_at:
-          type: string
-          format: date-time
-          
+  /evidence/{evidenceID}/custody-logs/verify:
+    get:
+      summary: Verify cryptographic integrity of the entire custody ledger chain
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: evidenceID
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Custody chain is cryptographically valid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationResponse'
+        '409':
+          description: Tampering or chain corruption detected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationResponse'
