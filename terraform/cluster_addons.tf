@@ -1,4 +1,8 @@
-# 1. ArgoCD: GitOps reconciliation engine for progressive delivery
+# ==============================================================================
+# Platform Cluster Addons (In-Cluster Engine & Policy Bootstrap via Helm)
+# ==============================================================================
+
+# 1. ArgoCD: GitOps reconciliation engine + automatic forensic-custody-api Application bootstrap
 resource "helm_release" "argocd" {
   name             = "argocd"
   repository       = "https://argoproj.github.io/argo-helm"
@@ -12,10 +16,21 @@ resource "helm_release" "argocd" {
     value = "ClusterIP"
   }
 
-  depends_on = [module.eks]
+  # Automatically bootstrap the GitOps Application and Kyverno ClusterPolicy manifests
+  values = [
+    yamlencode({
+      extraObjects = [
+        yamldecode(file("${path.module}/../k8s/gitops/argocd-application.yaml")),
+        yamldecode(file("${path.module}/../k8s/policies/disallow-root-and-privileged.yaml")),
+        yamldecode(file("${path.module}/../k8s/policies/verify-image-cosign.yaml"))
+      ]
+    })
+  ]
+
+  depends_on = [module.eks, helm_release.kyverno]
 }
 
-# 2. Kyverno: Kubernetes Admission Controller for Cosign signatures and PSS
+# 2. Kyverno: Kubernetes Admission Controller + Pod Security & Cosign policies
 resource "helm_release" "kyverno" {
   name             = "kyverno"
   repository       = "https://kyverno.github.io/kyverno/"
@@ -24,10 +39,25 @@ resource "helm_release" "kyverno" {
   namespace        = "kyverno"
   create_namespace = true
 
+  values = [
+    yamlencode({
+      policyReportsCleanup = {
+        image = {
+          repository = "bitnamilegacy/kubectl"
+        }
+      }
+      webhooksCleanup = {
+        image = {
+          repository = "bitnamilegacy/kubectl"
+        }
+      }
+    })
+  ]
+
   depends_on = [module.eks]
 }
 
-# 3. Falco: Runtime intrusion detection via kernel eBPF driver
+# 3. Falco: Runtime intrusion detection via kernel eBPF driver + custom forensic rules
 resource "helm_release" "falco" {
   name             = "falco"
   repository       = "https://falcosecurity.github.io/charts"
@@ -46,6 +76,15 @@ resource "helm_release" "falco" {
     name  = "tty"
     value = "true"
   }
+
+  # Automatically load custom forensic syscall detection rules from k8s/falco/
+  values = [
+    yamlencode({
+      customRules = {
+        "forensic-api-rules.yaml" = file("${path.module}/../k8s/falco/forensic-api-rules.yaml")
+      }
+    })
+  ]
 
   depends_on = [module.eks]
 }
@@ -67,7 +106,7 @@ resource "helm_release" "external_secrets" {
   depends_on = [module.eks]
 }
 
-# 5. kube-prometheus-stack: Prometheus Operator, Alertmanager and Exporters
+# 5. kube-prometheus-stack: Prometheus Operator, Alertmanager, Exporters & SLO Rules
 resource "helm_release" "kube_prometheus_stack" {
   name             = "kube-prometheus-stack"
   repository       = "https://prometheus-community.github.io/helm-charts"
@@ -75,6 +114,16 @@ resource "helm_release" "kube_prometheus_stack" {
   version          = "66.3.0"
   namespace        = "monitoring"
   create_namespace = true
+
+  # Automatically deploy PrometheusRule SLOs and AlertmanagerConfig from k8s/monitoring/
+  values = [
+    yamlencode({
+      extraManifests = [
+        yamldecode(file("${path.module}/../k8s/monitoring/prometheus-slo-rules.yaml")),
+        yamldecode(replace(file("${path.module}/../k8s/monitoring/alertmanager-config.yaml"), "{{", "{{ \"{{\" }}"))
+      ]
+    })
+  ]
 
   depends_on = [module.eks]
 }

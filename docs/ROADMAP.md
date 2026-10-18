@@ -97,9 +97,13 @@ flowchart LR
 
 ## 4. Architectural Decision Records (ADR) Index
 
-| ADR ID | Title | Status | Date | Decision Summary |
-|---|---|---|---|---|
-| [ADR 0001](file:///home/lrios/Documentos/archivos%20antigua%20laptop/PersonaL/forensic-custody-api/docs/adr/0001-tls-termination-architecture.md) | Edge TLS Termination on Reverse Proxy | Accepted | 2026-04-03 | TLS terminated at ALB/Ingress; microservice runs unencrypted HTTP inside private VPC network. |
-| **ADR 0002** | Evidence Immutability & Chained Ledger | Proposed | Pending | Use SHA-256 chained block hashes instead of complex distributed ledger for evidence custody state. |
-| **ADR 0003** | EKS Node OS: Bottlerocket vs Custom Packer AMIs | Proposed | Pending | Adopt AWS Bottlerocket OS for immutable, audited, read-only root node architecture. |
-| **ADR 0004** | Secret Management: ESO with AWS Secrets Manager | Proposed | Pending | Adopt External Secrets Operator (ESO) with EKS Pod Identity over heavy HashiCorp Vault cluster. |
+| ADR ID | Title | Status | Decision Summary |
+|---|---|---|---|
+| [ADR 0001](adr/0001-tls-termination.md) | Edge TLS Termination at the Load Balancer | Accepted | TLS terminated at AWS ALB; microservice runs HTTP inside private VPC subnets. |
+| [ADR 0002](adr/0002-s3-security-scope.md) | Deferred S3 Hardening & Lifecycle Scope | Accepted | Preserve forensic evidence indefinitely (no lifecycle expiration); single-region scope. |
+| [ADR 0003](adr/0003-object-lock-retention-mode.md) | Object Lock Retention Mode (Governance vs Compliance) | Accepted | Use `GOVERNANCE` mode during active iteration; `COMPLIANCE` specified for legal WORM retention. |
+| [ADR 0004](adr/0004-terraform-module-pinning.md) | Terraform Official Registry Module Pinning | Accepted | Use verified Registry modules with SemVer constraints and `.terraform.lock.hcl` checksums. |
+| [ADR 0005](adr/0005-alb-security-scope.md) | ALB Security Scope & Log4j Immunity | Accepted | Centralize edge logs in WAF v2 CloudWatch; Go Distroless binary is immune to JVM Log4Shell. |
+| [ADR 0006](adr/0006-backend-state-hardening-scope.md) | Terraform Remote State Backend Hardening Scope | Accepted | Encrypt S3 state and DynamoDB locks at rest with AWS-managed encryption and 90-day version expiry. |
+| [ADR 0007](adr/0007-kms-key-policy-architecture.md) | AWS KMS Key Policy Wildcard Architecture | Accepted | Comply with AWS KMS key policy `Resource: "*"` specification and root IAM delegation. |
+| [ADR 0008](adr/0008-secrets-manager-rotation-scope.md) | AWS Secrets Manager Rotation Scope with ESO | Accepted | Synchronize JWT signing keys via External Secrets Operator (ESO) with EKS Pod Identity. |

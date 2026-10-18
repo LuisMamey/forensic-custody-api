@@ -27,9 +27,9 @@ module "eks" {
       platform       = "bottlerocket"
       instance_types = ["t3.small"]
 
-      min_size     = 1
-      max_size     = 3
-      desired_size = 2
+      min_size     = 4
+      max_size     = 6
+      desired_size = 4
 
       # Restrict worker nodes to private subnets without public IPs
       subnet_ids = module.vpc.private_subnets
@@ -41,8 +41,8 @@ module "eks" {
       }
 
       tags = {
-        "k8s.io/cluster-autoscaler/enabled"                  = "true"
-        "k8s.io/cluster-autoscaler/forensic-custody-eks"     = "owned"
+        "k8s.io/cluster-autoscaler/enabled"              = "true"
+        "k8s.io/cluster-autoscaler/forensic-custody-eks" = "owned"
       }
     }
   }
