@@ -22,19 +22,16 @@ on plain HTTP on port 8080. The Semgrep finding is explicitly suppressed
 with `// nosemgrep` in `main.go`, referencing this ADR.
 
 ## Consequences
-- Positive: no certificate-management complexity is introduced in a
-  learning project; the design matches the real production pattern (TLS
+- Positive: no certificate-management complexity is introduced inside the
+  container image; the design matches the enterprise production pattern (TLS
   termination at the network edge).
-- Negative / accepted risk: no TLS-terminating load balancer exists yet.
-  Phase 1's Terraform work provisioned only S3 (evidence storage) and IAM
-  (least-privilege access) — provisioning real compute and a load balancer
-  was explicitly scoped out (see the project's decision log) as a separate,
-  optional extension, not something this ADR blocks on. Traffic between an
-  external client and this API would travel unencrypted if ever deployed
-  as-is. Acceptable today because the service is only run on `localhost`
-  or in ephemeral CI containers, never exposed to an untrusted network.
+- Negative / accepted risk: traffic between the ALB and the Kubernetes pods
+  travels over plain HTTP within the isolated private VPC subnets
+  (`10.0.10.0/24`, `10.0.20.0/24`). External internet traffic is restricted to
+  HTTPS (port 443) at the ALB security group boundary (`terraform/alb.tf`).
 
 ## Update note
-This ADR originally implied the load balancer was "pending" as part of
-Phase 1. Phase 1 is now complete and did not include one — deploying real
-compute (ECS/EC2 + ALB) remains unscoped, future work, not a pending step.
+Originally written in Sprint 1 prior to compute and ingress provisioning. In
+Sprint 3, the external Application Load Balancer (`terraform/alb.tf`), AWS WAF v2
+(`terraform/waf.tf`), and private AWS EKS cluster (`terraform/eks.tf`) were
+provisioned, completing the edge TLS termination architecture described here.

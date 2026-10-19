@@ -17,8 +17,21 @@ module "eks" {
   # Enable Control Plane Audit Logging
   cluster_enabled_log_types = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
 
-  # Enable EKS Pod Identity agent for secure workload authentication
+  # Enable EKS Pod Identity agent for secure workload authentication (replaces legacy IRSA)
   enable_cluster_creator_admin_permissions = true
+  enable_irsa                              = false
+
+  # Allow EKS Control Plane API proxy to reach forensic-custody-api pods on port 8080
+  node_security_group_additional_rules = {
+    ingress_cluster_8080_api_proxy = {
+      description                   = "Cluster API to node 8080/tcp forensic-custody-api proxy"
+      protocol                      = "tcp"
+      from_port                     = 8080
+      to_port                       = 8080
+      type                          = "ingress"
+      source_cluster_security_group = true
+    }
+  }
 
   # Hardened Node Group running Bottlerocket OS
   eks_managed_node_groups = {
@@ -27,9 +40,9 @@ module "eks" {
       platform       = "bottlerocket"
       instance_types = ["t3.small"]
 
-      min_size     = 1
-      max_size     = 3
-      desired_size = 2
+      min_size     = 4
+      max_size     = 6
+      desired_size = 4
 
       # Restrict worker nodes to private subnets without public IPs
       subnet_ids = module.vpc.private_subnets
@@ -41,8 +54,8 @@ module "eks" {
       }
 
       tags = {
-        "k8s.io/cluster-autoscaler/enabled"                  = "true"
-        "k8s.io/cluster-autoscaler/forensic-custody-eks"     = "owned"
+        "k8s.io/cluster-autoscaler/enabled"              = "true"
+        "k8s.io/cluster-autoscaler/forensic-custody-eks" = "owned"
       }
     }
   }

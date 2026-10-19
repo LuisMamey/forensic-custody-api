@@ -4,6 +4,8 @@
 *.dll
 *.so
 *.dylib
+bin/
+charts/*.tgz
 
 # Delve debug binaries
 __debug_bin*
