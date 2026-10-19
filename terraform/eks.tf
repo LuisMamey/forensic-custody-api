@@ -17,8 +17,9 @@ module "eks" {
   # Enable Control Plane Audit Logging
   cluster_enabled_log_types = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
 
-  # Enable EKS Pod Identity agent for secure workload authentication
+  # Enable EKS Pod Identity agent for secure workload authentication (replaces legacy IRSA)
   enable_cluster_creator_admin_permissions = true
+  enable_irsa                              = false
 
   # Allow EKS Control Plane API proxy to reach forensic-custody-api pods on port 8080
   node_security_group_additional_rules = {

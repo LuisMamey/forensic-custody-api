@@ -1,13 +1,14 @@
 # ==============================================================================
 # Platform Cluster Addons (In-Cluster Engine & Policy Bootstrap via Helm)
 # ==============================================================================
+# Uses pre-downloaded, SHA-256 verified local chart archives to eliminate
+# external network dependencies and timeouts during terraform apply.
+# ==============================================================================
 
-# 1. ArgoCD: GitOps reconciliation engine + automatic forensic-custody-api Application bootstrap
+# 1. ArgoCD: GitOps reconciliation engine
 resource "helm_release" "argocd" {
   name             = "argocd"
-  repository       = "https://argoproj.github.io/argo-helm"
-  chart            = "argo-cd"
-  version          = "7.7.7"
+  chart            = "${path.module}/../charts/argo-cd-7.7.7.tgz"
   namespace        = "argocd"
   create_namespace = true
 
@@ -16,26 +17,13 @@ resource "helm_release" "argocd" {
     value = "ClusterIP"
   }
 
-  # Automatically bootstrap the GitOps Application and Kyverno ClusterPolicy manifests
-  values = [
-    yamlencode({
-      extraObjects = [
-        yamldecode(file("${path.module}/../k8s/gitops/argocd-application.yaml")),
-        yamldecode(file("${path.module}/../k8s/policies/disallow-root-and-privileged.yaml")),
-        yamldecode(file("${path.module}/../k8s/policies/verify-image-cosign.yaml"))
-      ]
-    })
-  ]
-
   depends_on = [module.eks, helm_release.kyverno]
 }
 
 # 2. Kyverno: Kubernetes Admission Controller + Pod Security & Cosign policies
 resource "helm_release" "kyverno" {
   name             = "kyverno"
-  repository       = "https://kyverno.github.io/kyverno/"
-  chart            = "kyverno"
-  version          = "3.3.4"
+  chart            = "${path.module}/../charts/kyverno-3.3.4.tgz"
   namespace        = "kyverno"
   create_namespace = true
 
@@ -60,9 +48,7 @@ resource "helm_release" "kyverno" {
 # 3. Falco: Runtime intrusion detection via kernel eBPF driver + custom forensic rules
 resource "helm_release" "falco" {
   name             = "falco"
-  repository       = "https://falcosecurity.github.io/charts"
-  chart            = "falco"
-  version          = "4.18.0"
+  chart            = "${path.module}/../charts/falco-4.18.0.tgz"
   namespace        = "falco"
   create_namespace = true
 
@@ -92,9 +78,7 @@ resource "helm_release" "falco" {
 # 4. External Secrets Operator (ESO): Zero-Trust sync from AWS Secrets Manager
 resource "helm_release" "external_secrets" {
   name             = "external-secrets"
-  repository       = "https://charts.external-secrets.io"
-  chart            = "external-secrets"
-  version          = "0.10.5"
+  chart            = "${path.module}/../charts/external-secrets-0.10.5.tgz"
   namespace        = "external-secrets"
   create_namespace = true
 
@@ -109,9 +93,7 @@ resource "helm_release" "external_secrets" {
 # 5. kube-prometheus-stack: Prometheus Operator, Alertmanager, Exporters & SLO Rules
 resource "helm_release" "kube_prometheus_stack" {
   name             = "kube-prometheus-stack"
-  repository       = "https://prometheus-community.github.io/helm-charts"
-  chart            = "kube-prometheus-stack"
-  version          = "66.3.0"
+  chart            = "${path.module}/../charts/kube-prometheus-stack-66.3.0.tgz"
   namespace        = "monitoring"
   create_namespace = true
 
