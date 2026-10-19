@@ -8,6 +8,31 @@ Every security gate, cryptographic control, infrastructure module, and observabi
 
 ---
 
+## 📌 Executive Summary (For Recruiters & Hiring Managers)
+
+### The Real-World Problem
+In criminal litigation, corporate incident response, and regulatory compliance, **digital evidence (disk images, network dumps, memory captures) is only as good as its Chain of Custody**. If an organization cannot mathematically prove who handled an artifact, when it was analyzed, and that not a single bit was modified since seizure, **the evidence is inadmissible in court and legal cases collapse**.
+
+### The Solution: `forensic-custody-api`
+This project delivers an **end-to-end, tamper-evident digital evidence vault and custody ledger**:
+1. **Mathematical Incorruptibility:** Computes dual cryptographic fingerprints (**SHA-256 & SHA-512**) in streaming memory and chains every custody handoff into an **immutable cryptographic ledger** (blockchain-style state transitions) validated by **RFC 3161** legal timestamps.
+2. **Hardened Supply Chain (SLSA L3 Ready):** Runs inside a **non-root Google Distroless** container (~5.6MB, no shell) that is cryptographically signed keyless via **Sigstore Cosign**, attested in the **Rekor** transparency log, and SBOM-gated with **Syft & Grype**.
+3. **Enterprise Cloud Runtime:** Deploys on **AWS EKS v1.31** with **AWS Bottlerocket OS** (immutable, read-only rootfs), admission-governed by **Kyverno** (enforcing Cosign signature verification before pod launch), monitored at the Linux kernel level by **Falco eBPF**, and synchronized via pull-based **ArgoCD GitOps**.
+4. **FinOps & Platform Automation:** Fully automated via `./scripts/platform.sh` — cold-starts 74 AWS resources and 39 Kubernetes pods in **16m 41s**, and tears down to **$0.00/hr** compute cost in **15m 51s** when idle.
+
+### Technical Competency Matrix
+| Engineering Discipline | Real-World Implementation in this Repository |
+| :--- | :--- |
+| **Backend & Systems (Go)** | Standard library `net/http` (zero framework bloat), streaming I/O (`io.MultiWriter`), native mutation fuzzing (`go test -fuzz`), graceful shutdown. |
+| **Applied Cryptography** | Dual streaming hashes (fixed RAM buffer), chained ledger verification (`/verify`), ASN.1 DER RFC 3161 TSA proofs, AWS KMS Customer Managed Keys. |
+| **Cloud & IaC (Terraform)** | 3-tier VPC network segmentation, AWS EKS v1.31, Bottlerocket OS, AWS WAF v2 + HTTPS ALB, EKS Pod Identity (Zero-Trust IAM). |
+| **DevSecOps & Supply Chain** | Distroless non-root (`UID 65532`), Cosign keyless signing, Rekor attestation, CycloneDX SBOM (`Syft`), Grype CVE gates, Semgrep SAST, Govulncheck SCA. |
+| **Runtime Defense (CWPP)** | Kyverno admission controller (cryptographic signature verification), Falco eBPF kernel syscall monitoring (`execve`). |
+| **SRE & Observability** | Prometheus + OpenTelemetry metrics, mathematically enforced SLOs (99.9% availability, p99 < 250ms latency) stress-tested via **k6**, Alertmanager hygiene. |
+| **Progressive Delivery** | GitOps model via ArgoCD, single-command automated platform lifecycle (`platform.sh up/down`). |
+
+---
+
 ## 1. Forensic Domain & Cryptographic Architecture
 
 - **Case Management (`Case`)** — Investigation containers identified by case number, title, and lead investigator.
@@ -128,6 +153,7 @@ All architectural trade-offs and risk acceptances are documented in [`docs/adr/`
 - [ADR 0008 — AWS Secrets Manager Rotation Scope with ESO](docs/adr/0008-secrets-manager-rotation-scope.md)
 
 ### Deep-Dive Engineering Guides & Case Files:
+- **Platform & Infrastructure Operations:** [`PLATFORM_LIFECYCLE_TROUBLESHOOTING.md`](docs/PLATFORM_LIFECYCLE_TROUBLESHOOTING.md) | [`GITOPS_ARCHITECTURE.md`](docs/GITOPS_ARCHITECTURE.md) | [`SLO_FRAMEWORK.md`](docs/SLO_FRAMEWORK.md)
 - **Architecture & Threat Modeling:** [`ROADMAP.md`](docs/ROADMAP.md) | [`STRIDE_THREAT_MODEL.md`](docs/STRIDE_THREAT_MODEL.md) | [`IAC_vs_CSPM.md`](docs/IAC_vs_CSPM.md) | [`ASPM_DEFECTDOJO_ARCHITECTURE.md`](docs/ASPM_DEFECTDOJO_ARCHITECTURE.md)
-- **SRE & GitOps Operations:** [`SLO_FRAMEWORK.md`](docs/SLO_FRAMEWORK.md) | [`GITOPS_ARCHITECTURE.md`](docs/GITOPS_ARCHITECTURE.md) | [`INCIDENT-2026-001 Postmortem`](docs/postmortems/INCIDENT-2026-001-K6-JWT-AUTH.md)
+- **SRE Postmortems:** [`INCIDENT-2026-001 Postmortem`](docs/postmortems/INCIDENT-2026-001-K6-JWT-AUTH.md)
 - **Chronological Build Case Files:** [`PHASE1_HISTORY.md`](docs/PHASE1_HISTORY.md) | [`PHASE2_HISTORY.md`](docs/PHASE2_HISTORY.md) | [`PHASE3_HISTORY.md`](docs/PHASE3_HISTORY.md) | [`PHASE4_HISTORY.md`](docs/PHASE4_HISTORY.md) | [`PHASE5_HISTORY.md`](docs/PHASE5_HISTORY.md) | [`PHASE6_HISTORY.md`](docs/PHASE6_HISTORY.md)
