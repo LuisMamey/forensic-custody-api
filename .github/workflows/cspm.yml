@@ -30,7 +30,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install Prowler
-        run: pip install prowler==5.43.1
+        run: pip install prowler==5.45.0
 
       - name: Run Prowler Audit
         run: |
