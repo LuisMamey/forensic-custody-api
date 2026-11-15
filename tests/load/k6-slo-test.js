@@ -46,7 +46,7 @@ export default function () {
   const metricsRes = http.get(`${BASE_URL}/metrics`);
   check(metricsRes, {
     'metrics status is 200': (r) => r.status === 200,
-    'metrics contains telemetry': (r) => r.body.includes('forensic_http_requests_total'),
+    'metrics contains telemetry': (r) => (r.body ? r.body.includes('forensic_http_requests_total') : false),
   });
 
   sleep(0.1); // 100ms think time between investigator operations

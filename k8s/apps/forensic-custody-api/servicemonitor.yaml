@@ -1,0 +1,17 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: forensic-custody-api
+  namespace: default
+  labels:
+    app.kubernetes.io/name: forensic-custody-api
+    release: kube-prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: forensic-custody-api
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 10s
+      scrapeTimeout: 5s

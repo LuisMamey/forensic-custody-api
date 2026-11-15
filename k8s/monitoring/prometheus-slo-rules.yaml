@@ -6,6 +6,7 @@ metadata:
   labels:
     role: alert-rules
     app: forensic-custody-api
+    release: kube-prometheus-stack
 spec:
   groups:
     - name: forensic-api-sli-recording-rules
