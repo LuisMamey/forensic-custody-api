@@ -153,7 +153,7 @@ All architectural trade-offs and risk acceptances are documented in [`docs/adr/`
 - [ADR 0008 — AWS Secrets Manager Rotation Scope with ESO](docs/adr/0008-secrets-manager-rotation-scope.md)
 
 ### Deep-Dive Engineering Guides & Case Files:
-- **Platform & Infrastructure Operations:** [`PLATFORM_LIFECYCLE_TROUBLESHOOTING.md`](docs/PLATFORM_LIFECYCLE_TROUBLESHOOTING.md) | [`GITOPS_ARCHITECTURE.md`](docs/GITOPS_ARCHITECTURE.md) | [`SLO_FRAMEWORK.md`](docs/SLO_FRAMEWORK.md)
+- **Platform & Infrastructure Operations:** [`PLATFORM_LIFECYCLE_TROUBLESHOOTING.md`](docs/PLATFORM_LIFECYCLE_TROUBLESHOOTING.md) | [`GITOPS_ARCHITECTURE.md`](docs/GITOPS_ARCHITECTURE.md) | [`SLO_FRAMEWORK.md`](docs/SLO_FRAMEWORK.md) | [`CHAOS_GAME_DAY_REPORT.md`](docs/CHAOS_GAME_DAY_REPORT.md)
 - **Architecture & Threat Modeling:** [`ROADMAP.md`](docs/ROADMAP.md) | [`STRIDE_THREAT_MODEL.md`](docs/STRIDE_THREAT_MODEL.md) | [`IAC_vs_CSPM.md`](docs/IAC_vs_CSPM.md) | [`ASPM_DEFECTDOJO_ARCHITECTURE.md`](docs/ASPM_DEFECTDOJO_ARCHITECTURE.md)
 - **SRE Postmortems:** [`INCIDENT-2026-001 Postmortem`](docs/postmortems/INCIDENT-2026-001-K6-JWT-AUTH.md)
 - **Chronological Build Case Files:** [`PHASE1_HISTORY.md`](docs/PHASE1_HISTORY.md) | [`PHASE2_HISTORY.md`](docs/PHASE2_HISTORY.md) | [`PHASE3_HISTORY.md`](docs/PHASE3_HISTORY.md) | [`PHASE4_HISTORY.md`](docs/PHASE4_HISTORY.md) | [`PHASE5_HISTORY.md`](docs/PHASE5_HISTORY.md) | [`PHASE6_HISTORY.md`](docs/PHASE6_HISTORY.md)
